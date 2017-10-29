@@ -1,4 +1,6 @@
-import matplotlib.pyplot as plt # 2d plots
+import matplotlib
+matplotlib.use('agg')
+from matplotlib import pyplot as plt # 2d plots
 from mpl_toolkits.mplot3d import Axes3D # 3dplots
 import numpy as np # matrices and numerical methods
 
