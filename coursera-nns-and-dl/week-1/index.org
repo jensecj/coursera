@@ -1,0 +1,39 @@
+* week 1
+** types
+*** standard networks                               :supervised:unsupervised:
+e.g. predicting housing prices
+*** convolutional nets
+image / video tagging
+*** recurrent nets                                               :supervised:
+sequence data, like things with temporal components, such as text and voice.
+supervised.
+*** hybrids
+you may need to combine nets to drive a car, etc.
+** data
+*** structured
+features are well-defined (e.g. number of rooms in a house)
+*** unstructured
+features are difficult to define, (which things are in all images?) because of
+this, features may be pixels of an image, words in a text, etc.
+** why neural nets?
+with very large amounts of data, they seem to scale much better than traditional
+approaches such as SVMs, logistic regression, etc.
+** sigmoid vs. ReLU
+There are regions in sigmoid where the slope is nearly 0, which means that when
+gradient descent hits those regions, the changes in parameters/the 'steps',
+become very small, and learning follows suit.
+
+ReLU does not have that problem because it is 0, or a linear increase (for all
+positive values, the gradient is always 1).
+** notes from the Hinton interview
+#+begin_quote
+Either your intuitions are good, or they're not.
+If your intuitions are good, you should follow them,
+and you'll eventually be successful.
+If your intuitions are not good,
+it doesn't matter what you do.
+
+-- Geoffrey Hinton
+#+end_quote
+- replicate papers
+- never stop programming
