@@ -1,0 +1,178 @@
+* week 2
+** notation
+An example is a pair $(x, y)$ where $x \in \mathbb{R}^{n_{x}}$ and
+$y \in \{0,1\}$.
+
+($n^{x}$ is the number of features we have, so x in a feature vector the size
+of all our features)
+
+Usually $m$ is the number of examples we have in the training set. In cases
+where it needs to be distinct (e.g. training examples vs testing vs all) it can
+be sub-scripted $m_{test}$, $m_{train}$, etc.
+
+All the examples are a set or pairs $\{(x^{1}, y^{1}), ..., (x^{m}, y^{m}) \}$.
+
+To compact this notation we stack the examples as a matrix:
+
+\begin{align}
+X =
+\begin{bmatrix}
+ |    &   |   &        &  |  \\
+x^{1} & x^{2} & \cdots & x^{m} \\
+ |    &   |   &        &  |
+\end{bmatrix}
+\in \mathbb{R}^{n\times m}
+\end{align}
+
+Likewise the expected outputs (labels) are put into their own vector:
+$$Y = [y^{1}, y^{2}, \cdots, y^{m}] \in \mathbb{R}^{1 \times m}$$
+
+The parameters to logistic regression are $w \in \mathbb{R}^{n_x}$, and $b \in \mathbb{R}$.
+
+This course is not following the Coursera Machine Learning notation to a tee,
+e.g. they don't merge the intercept term into the theta vector.
+
+** logistic regression
+For binary classification. (e.g. having an image and wanting to label it)
+
+to try and predict whether an image is a picture of a cat, take all the pixel in
+the image, and their corresponding color values (r,g,b), and unroll them into a
+feature vector $[ p^1_r, p^2_r, \dots, p^n_r, p^1_g, p^2_g, \dots ]$.
+
+The problem: Given $x$, an image, we want to figure out $\hat{y}$, which is the
+estimate of $y$. formally, we want to figure out $\hat{y} = P(y = 1 | x)$, the
+probability that $y = 1$ (is this a picture of a cat?) for the input image $x$.
+
+** the cost function
+the formula for estimating $y$ is $\hat{y} = \sigma (z)$ where
+$z = w^Tx + b$ and $\sigma(z) = \frac{1}{1+e^{-z}}$.
+
+So for any training example $i$, we want $\hat{y}^i \approx y^i$.
+
+We also need a loss function $L$, a function which gives us some indication of how
+'good' our estimation is. We're not using squared-errors because in logistic
+regression we may end up with a non-convex optimization problem.
+
+Instead we're using:
+
+$L(\hat{y}, y) = -(y \log \hat{y} + (1 - y) \log(1-\hat{y}))$
+
+To see the intuitions for this loss-function, try to look at the cases where
+$y = 0$ and $y = 1$.
+
+These functions operate on single examples, to see how well we're doing on each
+example, to see how we're doing on the entire training set, we'll need the
+cost-function:
+
+$$
+J(w, b) = \frac{1}{m} \sum_{i=1}^m{L(\hat{y}^i, y^i)}
+$$
+
+Which is just the loss-function applied to all training examples, and scaled by
+the number of examples we have.
+
+
+If we substitute the definition of the loss-function, we get:
+$$
+J(w,b) = - \frac{1}{m} \sum_{i=1}^m{\[y^i \log \hat{y}^i + (1 - y^i) \log (1 - \hat{y}^i)\]}
+$$
+
+** gradient descent
+The idea: find the parameters $w,b$ which minimize $J(w,b)$.
+
+This is done by 'gradient descent', which takes a single step in the parameter
+space, in the direction of the steepest step down hill.
+
+for a single parameter $p$ we repeat the following process until we reach
+equilibrium:
+
+
+$$
+p := p - \alpha \frac{\partial J(p)}{\partial p}
+$$
+
+where $\alpha$ is the 'learning rate', e.g. how far we step in each iteration,
+and the derivative is the slope down hill, e.g. the how steep the steepest step
+is.
+
+in our case we have two parameters to update, $w$ and $b$, we just update them
+with the partial derivative with respect to the parameter we want to update.
+
+The algorithm is thus:
+for all examples:
+- calculate $z^i = w^Tx^i+b$ to get the estimate for $y$.
+- calculate the 'activation' (apply sigmoid), $a^i = \sigma(z^i)$
+- update the total cost using the loss-function, $J := J + L(\hat{y}, y)$
+- calculate the derivative for our estimate, $dz^i = a^i - y^i$ (see note 1)
+- calculate the partial derivatives for the parameters, and update them
+
+note 1: the calculation of the estimates simplifies to this.
+
+but we can do better, this approach requires us to iterate a lot, once over the
+examples, and for each example, we need to iterate over all parameters to update
+them.
+
+** vectorization
+A way to avoid the fore-mentioned nested iterations, using matrix-calculus, and
+the fact that computers can multiply them quickly.
+
+Instead of iterating over each parameter to update it, we create a vector of the
+parameters, and use matrix maths to update all the parameters simultaneously.
+$dw := dw + x^i dz^i$
+
+But doing just this, we still need to iterate over all our training examples, we
+can actually do the entire back-prop step using just formula.
+
+We can calculate all our estimates using matrix multiplication:
+$Z = [z^1, z^2, \dots, z^m] = w^TX + B$
+where $B = [b, b, \dots, b] \in \mathbb{R}^{1 \times m}$
+
+We can calculate all the activations using a vectorized sigmoid function:
+$A = [a^1, a^2, \dots, a^m] = \sigma(Z)$
+
+This is all we need for doing the forward propagation part.
+
+To calculate the derivatives for the activation, we use matrix-wide
+subtraction : $dz = A - Y = [a^1-y^1, \dots, a^m-y^m]$
+
+to calculate the partial derivatives:
+ $dw = \frac{1}{m} X \times dz^T = [x_i dz_i, \dots, x_m dz_m]$
+
+and to update the intercept terms, sum and scale the intercept vector,
+$db = \frac{1}{m}\sum_{i=1}^m(dz_i)$.
+
+finally, updating the parameters:
+$w := w - \alpha dw$ and $b := b - \alpha db$
+
+this gives us a single iteration of gradient descent.
+
+** notes on python
+numpy really likes broadcasting.
+
+numbers are expanded to vectors if you try to add/sub/mul/div them with
+vectors/matrices, then the opration is done element-wise.
+
+vectors are expanded if you try to add/sub/mul/div by copying rows/columns until
+the sizes of the vectors fit (only if one dimension is 1), and then do the
+operation element-wise.
+
+see [[https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html][the numpy docs]] for more information.
+
+#+begin_src python :session week2py :results silent
+import numpy as np
+#+end_src
+
+#+begin_src python :session week2py :results output
+a = np.array([[1,2,3,4], [5, 6, 7, 8]])
+print("a:\n" + str(a))
+print("a*5:\n" + str(a*5))
+
+b = np.array([[3],[5]])
+print("b:\n" + str(b))
+print("b+a:\n" + str(b+a))
+print("a+b:\n" + str(a+b))
+#+end_src
+
+** notes on the Pieter Abbeel interview
+Getting good mentors can be crucial for developing competence in a field,
+whether they're at a company, or at a university.
