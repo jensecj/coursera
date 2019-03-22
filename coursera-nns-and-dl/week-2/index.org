@@ -65,7 +65,7 @@ example, to see how we're doing on the entire training set, we'll need the
 cost-function:
 
 $$
-J(w, b) = \frac{1}{m} \sum_{i=1}^m{L(\hat{y}^i, y^i)}
+J = \frac{1}{m} \sum_{i=1}^m{L(\hat{y}^i, y^i)}
 $$
 
 Which is just the loss-function applied to all training examples, and scaled by
@@ -162,7 +162,7 @@ see [[https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html][the numpy 
 import numpy as np
 #+end_src
 
-#+begin_src python :session week2py :results output
+#+begin_src python :session week2py :results output :exports both
 a = np.array([[1,2,3,4], [5, 6, 7, 8]])
 print("a:\n" + str(a))
 print("a*5:\n" + str(a*5))
@@ -172,6 +172,25 @@ print("b:\n" + str(b))
 print("b+a:\n" + str(b+a))
 print("a+b:\n" + str(a+b))
 #+end_src
+
+#+RESULTS:
+#+begin_example
+a:
+[[1 2 3 4]
+ [5 6 7 8]]
+a*5:
+[[ 5 10 15 20]
+ [25 30 35 40]]
+b:
+[[3]
+ [5]]
+b+a:
+[[ 4  5  6  7]
+ [10 11 12 13]]
+a+b:
+[[ 4  5  6  7]
+ [10 11 12 13]]
+#+end_example
 
 ** notes on the Pieter Abbeel interview
 Getting good mentors can be crucial for developing competence in a field,
