@@ -1,0 +1,208 @@
+* week 3
+** syntax and representation
+A neural network is split up into layers, the input layer (features), the output
+layer (the final result), and the hidden layers (all the layers in between).
+
+here, we'll use the syntax $a^{[0]} = X$ for the input layer, and $a^{[n]}$ for
+some hidden layer. ($a$ for activations)
+
+a layer is going to be a column vector of the number of hidden units in that
+layer.
+
+\begin{align*}
+a^{[n]} =
+\begin{bmatrix}
+a^{[n]}_1 \\
+\vdots \\
+a^{[n]}_u
+\end{bmatrix}
+\end{align*}
+
+where $u$ is the number of hidden units in the layer.
+
+
+usually the input layer is not counted as a layer in the neural network, so a
+network with an input layer, a single hidden layer, and an output layer is
+usually referred to as a "two-layer neural-network".
+
+each node in a hidden layer performs some computation on the inputs to the
+layer (usually all the activations from the layer before it, e.g. each unit in
+the first hidden layer gets all the input features, and each unit in hidden
+layer two, gets all the computations from the first layer)
+
+like with logistic regression, there are two things to compute, the estimates,
+and the activations (which are based on the estimates).
+the computations for the first hidden node in the first hidden layer would look
+like this:
+$z^{[1]}_1 = w^{[1]}_1^tx + b^{[1]}_1$ and $a^{[1]}_1 = \sigma(z^{[1]}_1)$
+
+** vectorization
+since each layer can have several units, and there can be several layers, doing
+these computations in for-loops quickly becomes slow.
+
+we can do it much faster using vectorization.
+
+we take the individual parts of the calculations earlier,the weight parts of the
+estimate calculation, the input features, the intercepts for each weight, and
+then we use them to calculate the activations using matrix calculus.
+
+each entry in the weight vector is a row-vector (because of the transpose) of
+the weights . and the features and intercept vectors are both column vectors.
+
+so, for a single layer, if we have $u$ hidden units and $n$ features:
+
+\begin{align*}
+
+\begin{bmatrix}
+- w^{[1]}_1^T - \\
+\vdots \\
+- w^{[1]}_u^T -
+\end{bmatrix}
+\begin{bmatrix}
+x_1 \\
+\vdots \\
+x_n
+\end{bmatrix}
++
+\begin{bmatrix}
+b^{[1]}_1 \\
+\vdots \\
+b^{[1]}_u
+\end{bmatrix}
+=
+\begin{bmatrix}
+w^{[1]}_1^Tx_1 + b^{[1]}_1 \\
+\vdots \\
+w^{[1]}_u^Tx_n + b^{[n]}_u
+\end{bmatrix}
+=
+\begin{bmatrix}
+z^{[1]}_1 \\
+\vdots \\
+z^{[1]}_u
+\end{bmatrix}
+
+\end{align*}
+
+
+recall that our examples are expressed as:
+
+\begin{align*}
+X =
+\begin{bmatrix}
+ |    &   |   &        &  |  \\
+x^{1} & x^{2} & \cdots & x^{m} \\
+ |    &   |   &        &  |
+\end{bmatrix}
+\in \mathbb{R}^{n\times m}
+\end{align*}
+
+where $n$ is the number of features, and $m$ the number of examples.
+
+and if we use a vectorized sigmoid, we can then use this method to vectorize
+over all the training examples at once
+
+$W^{[1]}X+b^{[1]} = Z^{[1]}$
+
+the activations for the first layer are then calculated as $A^{[1]} = \sigma(Z^{[1]})$.
+
+and looks like:
+
+\begin{align*}
+A^{[1]} =
+\begin{bmatrix}
+ |    &   |   &        &  |  \\
+a^{[1](1)} & a^{[1](2)} & \cdots & a^{[1](m)} \\
+ |    &   |   &        &  |
+\end{bmatrix}
+\end{align*}
+
+where $a^{[l](i)}$ is the activation for layer $l$, and example $i$.
+
+this process is then followed for each layer in the network.
+
+** activation functions
+The activation function has impact on how fast your neural-network is going to
+learn. it is usually notes $g(z)$.
+
+$sigmoid = \frac{1}{1+e^{-1}} \in [0,1]$
+the one we have been using thus far, natural to use if we need the output to be
+between 0 and 1.
+
+$tanh(z) = \frac{e^z-e^{-z}}{e^z+e^{-z}} \in [-1,1]$ (hyperbolic tangent)
+usually works better than sigmoid because the means of the activations using
+this, is closer to having a 0-mean (kind of "centering" the data).
+note: an exception could be using sigmoid for the output layer when doing
+binary-classification, where you want the output to be between 0 and 1.
+
+$ReLU(z) = max(0, z)$ (rectified-linear-unit)
+if $z$ is either very large, or very small, the differences are not apparent
+using $sigmoid$ or $tanh$, instead we can use ReLU.
+so as long as $z$ is positive, the derivative is always 1.
+ReLU also comes in a leaky variant, with a slight slope for $z < 0$, which is
+calculated by $max(0.01z, z)$
+
+
+if we use linear activation functions, the activations would be linear
+combinations of the inputs (prior activations / features), and the combination
+of two linear functions, is a linear function, so if the hidden layers were
+linear, they may as well be squashed into a single layer, and it has been shown
+that this approach is no more powerful than ordinary logistic regression, so
+using non-linear activation functions is one part of the neural-network which
+really grants its power.
+
+** gradient descent
+for our neural-network with a single hidden layer, we have the parameters
+$w^{[1]}, b^{[1]}, w^{[2]}, b^{[2]}$, ($w$ and $b$ for the hidden layer, and the
+output layer).
+
+the number of units for the input layer is the number of features we have
+$n^{[0]} = n_x$. the number of units for the hidden layer depends on how we
+build the network, and we usually only have a single output unit in the last
+layer $n^[2] = 1$.
+
+the cost function takes these parameters to calculate the cost:
+$J(w^{[1]}, b^{[1]}, w^{[2]}, b^{[2]}) = \frac{1}{m}\sum_{i=1}^m L(\hat{y}, y)$
+
+where $m$ is the number of training examples, $L$ is the loss-function,
+$\hat{y}$ is the guess/estimate of the our model, and $y$ is the label from the
+training example (the "ground-truth").
+
+an iteration of gradient descent is thus:
+- compute prediction/estimate/guess
+- compute derivatives of our parameters
+- update the parameters
+
+we have already seen all these computations earlier.
+
+forward propagation is thus:
+for the first layer:
+$Z^{[1]} = W^{[1]}X+b^{[1]}$
+$A^{[1]} = g^{[1]}(Z^{[1]})$
+
+for the output layer:
+$Z^{[2]} = W^{[2]}A^{[1]} + b^{[2]}$
+$A^{[2]} = g^{[2]}(Z^{[2]})$
+
+
+and backwards propagation:
+from output to hidden layer:
+$dz^{[2]} = A^{[2]} - Y$
+$dw^{[2]} = \frac{1}{m}dz^{[2]}A^{[1]}^T$
+$db^{[2]} = \frac{1}{m}\sum_{i=1}^m(dz^{[2]})$
+
+from hidden layer to features:
+$dz^{[1]} = W^{[2]}^Tdz^{[2]} \times g^{[1]}'(z^{[1]})$
+$dw^{[1]} = \frac{1}{m} dz^{[1]}X^T$
+$db^{[1]} = \frac{1}{m} \sum_{i=1}^m(dz^{[1]})$
+
+now we have the gradients, and can use those to update the parameters as we
+learn in each iteration.
+
+** initialization
+Initializing the weights of the neural network to all zeroes, means that each
+unit in a layer will be symmetric, which causes problems, because they try to
+learn the same function, and will "learn" the same amount, and after each
+iteration, the units will still be symmetrical, which is not very helpful.
+
+solution: initialize the weights to (small) random values. (symmetry breaking)
