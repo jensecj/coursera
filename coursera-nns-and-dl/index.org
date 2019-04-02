@@ -1,4 +1,0 @@
-* Neural Networks and Deep Learning
-** sources
-*** https://www.coursera.org/learn/neural-networks-deep-learning
-** overview

@@ -1,0 +1,10 @@
+* Neural Networks and Deep Learning
+** sources
+*** https://www.coursera.org/learn/neural-networks-deep-learning
+** overview
+*** [[file:week-1/index.org][week 1]]
+*** [[file:week-2/index.org][week 2]]
+**** [[file:week-2/assignment-2/assignment-2.org][assignment 2]]
+*** [[file:week-3/index.org][week 3]]
+**** [[file:week-3/assignment-1/w3-assignment-1.org][assignment 1]]
+*** [[file:week-4/index.org][week 4]]
