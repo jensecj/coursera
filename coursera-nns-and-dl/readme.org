@@ -1,10 +1,17 @@
 * Neural Networks and Deep Learning
-** sources
-*** https://www.coursera.org/learn/neural-networks-deep-learning
 ** overview
-*** [[file:week-1/index.org][week 1]]
-*** [[file:week-2/index.org][week 2]]
-**** [[file:week-2/assignment-2/assignment-2.org][assignment 2]]
-*** [[file:week-3/index.org][week 3]]
-**** [[file:week-3/assignment-1/w3-assignment-1.org][assignment 1]]
-*** [[file:week-4/index.org][week 4]]
+*** week 1
+[[file:week-1/notes.org][notes]]
+*** week 2
+[[file:week-2/notes.org][notes]]
+[[file:week-2/assignment-1/Python-Basics-With-Numpy-v3.ipynb][assignment 1]]
+[[file:week-2/assignment-2/assignment-2.org][assignment 2]]
+*** week 3
+[[file:week-3/notes.org][notes]]
+[[file:week-3/assignment-1/w3-assignment-1.org][assignment 1]]
+*** week 4
+[[file:week-4/notes.org][notes]]
+[[file:week-4/assignment-1/Building-your-Deep-Neural-Network-Step-by-Step-v8.ipynb][assignment 1]]
+[[file:week-4/assignment-2/Deep-Neural-Network-Application-v8.ipynb][assignment 2]]
+** resources
+https://www.coursera.org/learn/neural-networks-deep-learning
