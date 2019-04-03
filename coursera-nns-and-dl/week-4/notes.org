@@ -1,0 +1,105 @@
+* week 4
+** syntax
+$L$ is the number of layers in a network.
+$n^{[l]}$ is the number of units in layer $l$.
+$a^{[l]} = g^{[l]}(z^{[l]})$ is the activations of layer $l$.
+the input features are $x = a^{[0]}$, and the output prediction is $\hat{y} =
+a^{[L]}$.
+
+** Deep Neural Networks
+In week 3 we looked at how forward propagation looked for a neural network with
+a single hidden layer. the method for deeper neural networks is more of the
+same.
+
+Calculate the activations for the first layer using the input features (the 0th
+layer), once that is done, we calculate the activations for the next layer using
+the activations we have just calculated for the first layer.
+
+Lets look at the shaped of a neural network.
+
+each layer is a column vector of $n^{[l]}$ hidden units for layer $l$.
+
+to calculate the activations for the current layer, we use the activations from
+the layer before it:
+
+$z^{[l]} = w^{[l]}a^{[l-1]}+b^{[l]}$
+$a^{[l]} = g^{[l]}(z^{[l]})$
+
+the activations for a layer l, is a column vector of the same shape, viz. a
+column vector of size $(n^{[l]}, 1)$.
+
+in our fully connected model, every hidden unit of layer $l$, has each
+activation from the layer before it as inputs.
+so the shape of the weights matrix is $w^{[l]}: (n^{[l]}, n^{[l-1]})$.
+And each unit has a bias associated with it, so the shape of the bias vector is
+the same as the units, and activations.
+
+In the vectorized approach, we calculate activations for all training examples
+at the same time, by stacking the calculations and taking advantage of matrix
+calculus, so the shape becomes
+\begin{align*}
+Z^{[l]} =
+\begin{bmatrix}
+ |    &   |   &        &  |  \\
+z^{[l](1)} & z^{[l](2)} & \cdots & z^{[l](m)} \\
+ |    &   |   &        &  |
+\end{bmatrix}
+: ({n^{[l]}\times m})
+\end{align*}
+
+where $m$ is the size of the training set.
+
+and the calculation looks like:
+$Z^{[l]} = W^{[l]}X+b^{[l]}$ for layer $l$.
+
+where $X$ was all the training examples stacked horizontally, so it has the
+shape $(n^{[0]}, m)$.
+
+note: the bias vector actually needs to be duplicated horizontally, but python
+does that by default using broadcasting, so in our implementation we can just
+ignore it.
+
+** Propagation in deep neural networks
+[[file:propagation.png]]
+
+forward propagation, a layer $l$ takes $a^{[l-1]}$ as input, and outputs
+$a^{[l]}$. (note: for each layer we cache $z^{[l]}$, because we need it for
+backward propagation)
+
+backward propagation from layer $l$ takes $da^{[l]}$ as input, and outputs
+$da^{[l-1]}, dw^{[l]}, db^{[l]}$.
+
+Forward propagation:
+$Z^{[l]} = W^{[l]} A^{[l-1]}+b^{[l]}$
+$A^{[l]} = g^{[l]}(Z^{[l]})$
+
+where $A^{[0]} = X$, because the "activations" for the zeroth layer are the
+input features.
+
+backward propagation:
+$dZ^{[l]} = dA^{[l]}*g^{[l]'}(Z^{[l]})$
+$dW^{[l]} = \frac{1}{m} dZ^{[l]} A^{[l-1]}^T$
+$db^{[l]} = \frac{1}{m} \sum(dZ^{[l]})$
+$dA^{[l-1]} = W^{[l]}^T dZ^{[l]}$
+
+where $da^{[L]}$ is the derivative of the loss function, and $dA^{[L]}$ is
+created by stacking the for all layers.
+
+** parameters and hyperparameters
+parameters:
+- the weights, $W$
+- the bias terms, $b$
+hyperparameters:
+- the learning rate
+- the number of iterations
+- number of hidden layers
+- number of hidden units in layers (can differ per layer)
+- choice of activation function
+- (momentum)
+- (minibatch size)
+- (regularization)
+- ...
+
+hyperparameters are "hyper" because they affect the parameters.
+
+So how do we choose them? testing, try different things, see what works.
