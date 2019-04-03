@@ -43,11 +43,11 @@ these computations in for-loops quickly becomes slow.
 we can do it much faster using vectorization.
 
 we take the individual parts of the calculations earlier,the weight parts of the
-estimate calculation, the input features, the intercepts for each weight, and
+estimate calculation, the input features, the biases for each weight, and
 then we use them to calculate the activations using matrix calculus.
 
 each entry in the weight vector is a row-vector (because of the transpose) of
-the weights . and the features and intercept vectors are both column vectors.
+the weights . and the features and bias vectors are both column vectors.
 
 so, for a single layer, if we have $u$ hidden units and $n$ features:
 

@@ -238,7 +238,7 @@ n_y =	2
 
 Next we need to initialize the models parameters.
 As seen in the weeks notes, we would like to initialize each units weights to
-small random values, to break symmetry, and we can just initialize the intercept
+small random values, to break symmetry, and we can just initialize the bias
 terms to 0.
 
 #+begin_src python :results silent

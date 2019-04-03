@@ -1,7 +1,7 @@
 #+OPTIONS: toc:nil html-postamble:nil
 #+PROPERTY: header-args:python :session week2sess :tangle cat-predict.py :exports code
 
-* assignment 1
+* assignment 2
 Implement a simple model for predicting whether in image has a cat in it, or
 not.
 
@@ -356,6 +356,7 @@ def predict(w, b, X):
     # Compute vector "A" predicting the probabilities of a cat being present in the picture
     A = sigmoid(np.dot(w.T,X)+b)
     
+    # you can also just use np.round(A) to round every number in A.
     for i in range(A.shape[1]):
         # Convert probabilities A[0,i] to actual predictions p[0,i]
         Y_prediction[0,i] = A[0,i] > 0.5
