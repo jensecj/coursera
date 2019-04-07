@@ -1,5 +1,5 @@
 #+OPTIONS: toc:nil html-postamble:nil
-#+PROPERTY: header-args:python :session week-4-sess :tangle nn.py :exports code
+#+PROPERTY: header-args:python :session week-4-sess-1 :tangle nn.py :exports code
 
 * week 4 assignment 1
 All there is left to do, is to combine all the things we have done for the other
@@ -38,13 +38,11 @@ def sigmoid(Z):
     A -- output of sigmoid(z), same shape as Z
     cache -- returns Z as well, useful during backpropagation
     """
-    
     A = 1/(1+np.exp(-Z))
     cache = Z
     
     return A, cache
 #+end_src
-
 
 #+begin_src python :results silent
 def relu(Z):
@@ -58,7 +56,6 @@ def relu(Z):
     A -- Post-activation parameter, of the same shape as Z
     cache -- a python dictionary containing "A" ; stored for computing the backward pass efficiently
     """
-    
     A = np.maximum(0,Z)
     
     assert(A.shape == Z.shape)
@@ -79,7 +76,6 @@ def relu_backward(dA, cache):
     Returns:
     dZ -- Gradient of the cost with respect to Z
     """
-    
     Z = cache
     dZ = np.array(dA, copy=True) # just converting dz to a correct object.
     
@@ -103,7 +99,6 @@ def sigmoid_backward(dA, cache):
     Returns:
     dZ -- Gradient of the cost with respect to Z
     """
-    
     Z = cache
     
     s = 1/(1+np.exp(-Z))
