@@ -11,7 +11,7 @@
 [[file:week-3/assignment-1/w3-assignment-1.org][assignment 1]]
 *** week 4
 [[file:week-4/notes.org][notes]]
-[[file:week-4/assignment-1/Building-your-Deep-Neural-Network-Step-by-Step-v8.ipynb][assignment 1]]
-[[file:week-4/assignment-2/Deep-Neural-Network-Application-v8.ipynb][assignment 2]]
+[[file:week-4/assignment-1/w4-assignment-1.org][assignment 1]]
+[[file:week-4/assignment-2/w4-assignment-2.org][assignment 2]]
 ** resources
 https://www.coursera.org/learn/neural-networks-deep-learning
