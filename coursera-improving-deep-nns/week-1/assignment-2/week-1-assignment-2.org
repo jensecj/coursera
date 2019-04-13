@@ -1,0 +1,561 @@
+#+OPTIONS: toc:nil html-postamble:nil
+#+PROPERTY: header-args:python :session week-1-sess-2 :tangle regularize.py :exports code
+
+* Regularization
+One way to fight overfitting in neural networks is by regularization!
+
+We'll look at two different kinds of regularization for deep networks,
+L2-regularization, and Dropout layers.
+
+** setup
+import the packages we need
+#+begin_src python :results silent
+import numpy as np
+import matplotlib.pyplot as plt
+from reg_utils import sigmoid, relu, plot_decision_boundary, initialize_parameters, predict_dec
+from reg_utils import compute_cost, predict, forward_propagation, backward_propagation, update_parameters
+import sklearn
+import sklearn.datasets
+import scipy.io
+from testCases import *
+
+plt.rcParams['figure.figsize'] = (7.0, 4.0) # set default size of plots
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+#+end_src
+
+Let's load and look at an example dataset.
+
+#+begin_src python :results file
+def load_2D_dataset():
+    data = scipy.io.loadmat('datasets/data.mat')
+    train_X = data['X'].T
+    train_Y = data['y'].T
+    test_X = data['Xval'].T
+    test_Y = data['yval'].T
+    
+    return train_X, train_Y, test_X, test_Y
+
+train_X, train_Y, test_X, test_Y = load_2D_dataset()
+plt.scatter(train_X[0, :], train_X[1, :], c=train_Y.ravel().tolist(), s=40, cmap=plt.cm.Spectral);
+plt.savefig("2d-dataset.png")
+plt.close()
+
+"2d-dataset.png"
+#+end_src
+
+#+RESULTS:
+[[file:2d-dataset.png]]
+
+
+We want to train a network to find a separation between the red and blue points.
+
+** non-regularized model
+First, let's try a non-regularized model.
+
+#+begin_src python :results silent
+def model(X, Y, learning_rate = 0.3, num_iterations = 30000, print_cost = True, lambd = 0, keep_prob = 1, image = "costs.png"):
+    """
+    Implements a three-layer neural network: LINEAR->RELU->LINEAR->RELU->LINEAR->SIGMOID.
+    
+    Arguments:
+    X -- input data, of shape (input size, number of examples)
+    Y -- true "label" vector (1 for blue dot / 0 for red dot), of shape (output size, number of examples)
+    learning_rate -- learning rate of the optimization
+    num_iterations -- number of iterations of the optimization loop
+    print_cost -- If True, print the cost every 10000 iterations
+    lambd -- regularization hyperparameter, scalar
+    keep_prob - probability of keeping a neuron active during drop-out, scalar.
+    
+    Returns:
+    parameters -- parameters learned by the model. They can then be used to predict.
+    """
+    grads = {}
+    costs = []                            # to keep track of the cost
+    m = X.shape[1]                        # number of examples
+    layers_dims = [X.shape[0], 20, 3, 1]
+    
+    # Initialize parameters dictionary.
+    parameters = initialize_parameters(layers_dims)
+    
+    # Loop (gradient descent)
+    for i in range(0, num_iterations):
+        # Forward propagation: LINEAR -> RELU -> LINEAR -> RELU -> LINEAR -> SIGMOID.
+        if keep_prob == 1:
+            a3, cache = forward_propagation(X, parameters)
+            
+        elif keep_prob < 1:
+            a3, cache = forward_propagation_with_dropout(X, parameters, keep_prob)
+            
+        # Cost function
+        if lambd == 0:
+            cost = compute_cost(a3, Y)
+        
+        else:
+            cost = compute_cost_with_regularization(a3, Y, parameters, lambd)
+            
+        # Backward propagation.
+        assert(lambd==0 or keep_prob==1)
+        # it is possible to use both L2 regularization and dropout,
+        # but this assignment will only explore one at a time
+        if lambd == 0 and keep_prob == 1:
+            grads = backward_propagation(X, Y, cache)
+        
+        elif lambd != 0:
+            grads = backward_propagation_with_regularization(X, Y, cache, lambd)
+        
+        elif keep_prob < 1:
+            grads = backward_propagation_with_dropout(X, Y, cache, keep_prob)
+        
+        # Update parameters.
+        parameters = update_parameters(parameters, grads, learning_rate)
+        
+        # Print the loss every 10000 iterations
+        if print_cost and i % 10000 == 0:
+            print("Cost after iteration {}: {}".format(i, cost))
+            
+        if print_cost and i % 1000 == 0:
+            costs.append(cost)
+            
+    # plot the cost
+    plt.plot(costs)
+    plt.ylabel('cost')
+    plt.xlabel('iterations (x1,000)')
+    plt.title("Learning rate =" + str(learning_rate))
+    plt.savefig(image)
+    plt.close()
+    
+    return parameters
+#+end_src
+
+You can ignore the $keep_prob$, and $lambd$ parts for now.
+
+#+begin_src python :results output :exports both
+parameters = model(train_X, train_Y, image = "non-regularized-costs.png")
+print ("On the training set:")
+predictions_train = predict(train_X, train_Y, parameters)
+print ("On the test set:")
+predictions_test = predict(test_X, test_Y, parameters)
+#+end_src
+
+#+RESULTS:
+: Cost after iteration 0: 0.6557412523481002
+: Cost after iteration 10000: 0.16329987525724207
+: Cost after iteration 20000: 0.13851642423254984
+: On the training set:
+: Accuracy: 0.9478672985781991
+: On the test set:
+: Accuracy: 0.915
+
+[[file:non-regularized-costs.png]]
+
+Seems good enough, an accuracy of 91.5% is great!
+
+#+begin_src python :results file
+plt.title("Model without regularization")
+axes = plt.gca()
+axes.set_xlim([-0.75,0.40])
+axes.set_ylim([-0.75,0.65])
+plot_decision_boundary(lambda x: predict_dec(parameters, x.T), train_X, train_Y)
+plt.savefig("non-regularized-predictions.png")
+plt.close()
+
+"non-regularized-predictions.png"
+#+end_src
+
+#+RESULTS:
+[[file:non-regularized-predictions.png]]
+
+Here's a problem though, it looks like our model is overfit to our data.
+
+** L2-regularization
+One way to combat this overfitting is to use L2-regularization, named after the
+L2-distance it uses to calculate the regularization term.
+
+[[file:images/regularization.png]]
+
+As we can see, the regularization term is a scaled version of the sum of squared
+weights for a layer, in python, this can easily be achieved using
+$np.sum(np.square(...))$.
+
+#+begin_src python :results silent
+def compute_cost_with_regularization(A3, Y, parameters, lambd):
+    """
+    Implement the cost function with L2 regularization. See formula (2) above.
+    
+    Arguments:
+    A3 -- post-activation, output of forward propagation, of shape (output size, number of examples)
+    Y -- "true" labels vector, of shape (output size, number of examples)
+    parameters -- python dictionary containing parameters of the model
+    
+    Returns:
+    cost - value of the regularized loss function (formula (2))
+    """
+    m = Y.shape[1]
+    W1 = parameters["W1"]
+    W2 = parameters["W2"]
+    W3 = parameters["W3"]
+    
+    cross_entropy_cost = compute_cost(A3, Y) # This gives you the cross-entropy part of the cost
+    
+    L2_regularization_cost = (np.sum(np.square(W1)) + np.sum(np.square(W2)) + np.sum(np.square(W3))) * (1/m)*(lambd / 2)
+    
+    cost = cross_entropy_cost + L2_regularization_cost
+    
+    return cost
+#+end_src
+
+#+begin_src python :results output :exports both
+A3, Y_assess, parameters = compute_cost_with_regularization_test_case()
+
+print("cost = " + str(compute_cost_with_regularization(A3, Y_assess, parameters, lambd = 0.1)))
+#+end_src
+
+#+RESULTS:
+: cost = 1.7864859451590758
+
+#+begin_example
+Expected Output:
+
+cost	1.78648594516
+#+end_example
+
+Because we changed the cost-function, we also have to change the backward
+propagation, because it is updated by the derivative of the cost-function.
+
+The derived term of the regularization is $\frac{\lambda}{m}W$, where $m$ is the
+number of examples. this we need to add to the derived weights.
+
+#+begin_src python :results silent
+def backward_propagation_with_regularization(X, Y, cache, lambd):
+    """
+    Implements the backward propagation of our baseline model to which we added an L2 regularization.
+    
+    Arguments:
+    X -- input dataset, of shape (input size, number of examples)
+    Y -- "true" labels vector, of shape (output size, number of examples)
+    cache -- cache output from forward_propagation()
+    lambd -- regularization hyperparameter, scalar
+    
+    Returns:
+    gradients -- A dictionary with the gradients with respect to each parameter, activation and pre-activation variables
+    """
+    m = X.shape[1]
+    (Z1, A1, W1, b1, Z2, A2, W2, b2, Z3, A3, W3, b3) = cache
+    
+    dZ3 = A3 - Y
+    
+    dW3 = 1./m * np.dot(dZ3, A2.T) + (lambd / m)*W3 # added regularization term here
+    db3 = 1./m * np.sum(dZ3, axis=1, keepdims = True)
+    
+    dA2 = np.dot(W3.T, dZ3)
+    dZ2 = np.multiply(dA2, np.int64(A2 > 0))
+    dW2 = 1./m * np.dot(dZ2, A1.T) + (lambd/m)*W2 # here
+    db2 = 1./m * np.sum(dZ2, axis=1, keepdims = True)
+    
+    dA1 = np.dot(W2.T, dZ2)
+    dZ1 = np.multiply(dA1, np.int64(A1 > 0))
+    dW1 = 1./m * np.dot(dZ1, X.T) + (lambd/m)*W1 # and here
+    db1 = 1./m * np.sum(dZ1, axis=1, keepdims = True)
+    
+    gradients = {"dZ3": dZ3, "dW3": dW3, "db3": db3,"dA2": dA2,
+                 "dZ2": dZ2, "dW2": dW2, "db2": db2, "dA1": dA1,
+                 "dZ1": dZ1, "dW1": dW1, "db1": db1}
+    
+    return gradients
+#+end_src
+
+#+begin_src python :results output :exports both
+X_assess, Y_assess, cache = backward_propagation_with_regularization_test_case()
+
+grads = backward_propagation_with_regularization(X_assess, Y_assess, cache, lambd = 0.7)
+print ("dW1 = "+ str(grads["dW1"]))
+print ("dW2 = "+ str(grads["dW2"]))
+print ("dW3 = "+ str(grads["dW3"]))
+#+end_src
+
+#+RESULTS:
+: dW1 = [[-0.25604646  0.12298827 -0.28297129] [-0.17706303  0.34536094 -0.4410571 ]]
+: dW2 = [[ 0.79276486  0.85133918] [-0.0957219  -0.01720463] [-0.13100772 -0.03750433]]
+: dW3 = [[-1.77691347 -0.11832879 -0.09397446]]
+
+#+begin_example
+Expected Output:
+
+dW1	[[-0.25604646 0.12298827 -0.28297129] [-0.17706303 0.34536094 -0.4410571 ]]
+dW2	[[ 0.79276486 0.85133918] [-0.0957219 -0.01720463] [-0.13100772 -0.03750433]]
+dW3	[[-1.77691347 -0.11832879 -0.09397446]]
+#+end_example
+
+
+Now we can train our model with regularization:
+#+begin_src python :results output :exports both
+parameters = model(train_X, train_Y, lambd = 0.7, image = "l2-regularization-costs.png")
+print ("On the train set:")
+predictions_train = predict(train_X, train_Y, parameters)
+print ("On the test set:")
+predictions_test = predict(test_X, test_Y, parameters)
+#+end_src
+
+#+RESULTS:
+: Cost after iteration 0: 0.6974484493131264
+: Cost after iteration 10000: 0.26849188732822393
+: Cost after iteration 20000: 0.2680916337127301
+: On the train set:
+: Accuracy: 0.9383886255924171
+: On the test set:
+: Accuracy: 0.93
+
+[[file:l2-regularization-costs.png]]
+
+The accuracy on our test set went up to 93%.
+
+#+begin_src python :results file
+plt.title("Model with L2-regularization")
+axes = plt.gca()
+axes.set_xlim([-0.75,0.40])
+axes.set_ylim([-0.75,0.65])
+plot_decision_boundary(lambda x: predict_dec(parameters, x.T), train_X, train_Y)
+plt.savefig("l2-regularization-predictions.png")
+plt.close()
+
+"l2-regularization-predictions.png"
+#+end_src
+
+#+RESULTS:
+[[file:l2-regularization-predictions.png]]
+
+
+And our model does not overfit the training date anymore!
+
+Some key takeaways:
+- the regularization parameter $\lambda$ is a hyperparameter which needs tuning
+  to achieve a good model.
+- L2-regularization helps make the boundary smoother, but if $\lambda$ is too
+  bit, the model can "over-smooth", and introduce high-bias in the model,
+  underfitting the data instead.
+- when we add a regularization term to our cost, we also need to update
+  backpropagation
+- increasing $\lambda$ decreases the weights, leading to "weight-decay", which
+  simplifies the model
+
+
+** dropout regularization
+
+Dropout is a regularization technique specific to deep-learning, the idea is
+that when training the model, a dropout layer randomly drops a unit from
+activating in the layer with some probability $1 - keep_prob$, this forces the
+units in a layer to not rely too strongly on any activations from the units in
+the layer before it, spreading out the weights instead.
+The units that are dropped are random for each iteration, and they're only
+"shut-off" during training, the plan is to get a sturdier model.
+
+One thing to note: when we drop a unit, we still want to keep the expected
+output from an activation within the range it was before, so we scale each of
+the remaining units by the probability of dropping a unit from that layer,
+e.g. if we drop a unit with 0.5 probability (e.g. we drop half the units in a
+layer), we divide the activations from the layer with 0.5, in effect doubling
+their effect, this way the expected output stays the same.
+
+A simple way to do this is to introduce a new matrix $D$, which has the same
+shape as our weights $W$, where $D$ is initialized randomly to 0-or-1 depending
+on the probability of dropping units, for each iteration we can simple multiply
+these two matrices together when calculating our activations, and the
+corresponding units will be dropped for that iterations activation-calculation.
+
+#+begin_src python :results silent
+def forward_propagation_with_dropout(X, parameters, keep_prob = 0.5):
+    """
+    Implements the forward propagation: LINEAR -> RELU + DROPOUT -> LINEAR -> RELU + DROPOUT -> LINEAR -> SIGMOID.
+    
+    Arguments:
+    X -- input dataset, of shape (2, number of examples)
+    parameters -- python dictionary containing your parameters "W1", "b1", "W2", "b2", "W3", "b3":
+                    W1 -- weight matrix of shape (20, 2)
+                    b1 -- bias vector of shape (20, 1)
+                    W2 -- weight matrix of shape (3, 20)
+                    b2 -- bias vector of shape (3, 1)
+                    W3 -- weight matrix of shape (1, 3)
+                    b3 -- bias vector of shape (1, 1)
+    keep_prob - probability of keeping a neuron active during drop-out, scalar
+    
+    Returns:
+    A3 -- last activation value, output of the forward propagation, of shape (1,1)
+    cache -- tuple, information stored for computing the backward propagation
+    """
+    np.random.seed(1) # just to make it easy to compare results
+    
+    # retrieve parameters
+    W1 = parameters["W1"]
+    b1 = parameters["b1"]
+    W2 = parameters["W2"]
+    b2 = parameters["b2"]
+    W3 = parameters["W3"]
+    b3 = parameters["b3"]
+    
+    # LINEAR -> RELU -> LINEAR -> RELU -> LINEAR -> SIGMOID
+    Z1 = np.dot(W1, X) + b1
+    A1 = relu(Z1)
+    # Steps 1-4 below correspond to the Steps 1-4 described above.
+    D1 = np.random.rand(A1.shape[0], A1.shape[1]) # Step 1: initialize matrix D1 = np.random.rand(..., ...)
+    D1 = D1 < keep_prob # Step 2: convert entries of D1 to 0 or 1 (using keep_prob as the threshold)
+    A1 = A1 * D1 # Step 3: shut down some neurons of A1
+    A1 = A1 / keep_prob # Step 4: scale the value of neurons that haven't been shut down
+    
+    Z2 = np.dot(W2, A1) + b2
+    A2 = relu(Z2)
+    
+    D2 = np.random.rand(A2.shape[0], A2.shape[1]) # Step 1: initialize matrix D2 = np.random.rand(..., ...)
+    D2 = D2 < keep_prob # Step 2: convert entries of D2 to 0 or 1 (using keep_prob as the threshold)
+    A2 = A2 * D2 # Step 3: shut down some neurons of A2
+    A2 = A2 / keep_prob # Step 4: scale the value of neurons that haven't been shut down
+    
+    Z3 = np.dot(W3, A2) + b3
+    A3 = sigmoid(Z3)
+    
+    cache = (Z1, D1, A1, W1, b1, Z2, D2, A2, W2, b2, Z3, A3, W3, b3)
+    
+    return A3, cache
+#+end_src
+
+#+begin_src python :results output :exports both
+X_assess, parameters = forward_propagation_with_dropout_test_case()
+
+A3, cache = forward_propagation_with_dropout(X_assess, parameters, keep_prob = 0.7)
+print ("A3 = " + str(A3))
+#+end_src
+
+#+RESULTS:
+: A3 = [[0.36974721 0.00305176 0.04565099 0.49683389 0.36974721]]
+
+#+begin_example
+Expected Output:
+
+A3	[[ 0.36974721 0.00305176 0.04565099 0.49683389 0.36974721]]
+#+end_example
+
+Since we dropped some units in our activating calculation, and scaled the
+activations, we need to do the same in our backpropagation.
+
+In our forward-propagation step we saved which units we dropped, so we can drop
+those same units now.
+
+#+begin_src python :results silent
+def backward_propagation_with_dropout(X, Y, cache, keep_prob):
+    """
+    Implements the backward propagation of our baseline model to which we added dropout.
+    
+    Arguments:
+    X -- input dataset, of shape (2, number of examples)
+    Y -- "true" labels vector, of shape (output size, number of examples)
+    cache -- cache output from forward_propagation_with_dropout()
+    keep_prob - probability of keeping a neuron active during drop-out, scalar
+    
+    Returns:
+    gradients -- A dictionary with the gradients with respect to each parameter, activation and pre-activation variables
+    """
+    m = X.shape[1]
+    (Z1, D1, A1, W1, b1, Z2, D2, A2, W2, b2, Z3, A3, W3, b3) = cache
+    
+    dZ3 = A3 - Y
+    dW3 = 1./m * np.dot(dZ3, A2.T)
+    db3 = 1./m * np.sum(dZ3, axis=1, keepdims = True)
+    dA2 = np.dot(W3.T, dZ3)
+    
+    dA2 = dA2 * D2 # Step 1: Apply mask D2 to shut down the same neurons as during the forward propagation
+    dA2 = dA2 / keep_prob # Step 2: Scale the value of neurons that haven't been shut down
+    
+    dZ2 = np.multiply(dA2, np.int64(A2 > 0))
+    dW2 = 1./m * np.dot(dZ2, A1.T)
+    db2 = 1./m * np.sum(dZ2, axis=1, keepdims = True)
+    
+    dA1 = np.dot(W2.T, dZ2)
+    
+    dA1 = dA1 * D1 # Step 1: Apply mask D1 to shut down the same neurons as during the forward propagation
+    dA1 = dA1 / keep_prob # Step 2: Scale the value of neurons that haven't been shut down
+    
+    dZ1 = np.multiply(dA1, np.int64(A1 > 0))
+    dW1 = 1./m * np.dot(dZ1, X.T)
+    db1 = 1./m * np.sum(dZ1, axis=1, keepdims = True)
+    
+    gradients = {"dZ3": dZ3, "dW3": dW3, "db3": db3,"dA2": dA2,
+                 "dZ2": dZ2, "dW2": dW2, "db2": db2, "dA1": dA1, 
+                 "dZ1": dZ1, "dW1": dW1, "db1": db1}
+    
+    return gradients
+#+end_src
+
+#+begin_src python :results output :exports both
+X_assess, Y_assess, cache = backward_propagation_with_dropout_test_case()
+
+gradients = backward_propagation_with_dropout(X_assess, Y_assess, cache, keep_prob = 0.8)
+
+print ("dA1 = " + str(gradients["dA1"]))
+print ("dA2 = " + str(gradients["dA2"]))
+#+end_src
+
+#+RESULTS:
+: dA1 = [[ 0.36544439  0.         -0.00188233  0.         -0.17408748]
+:  [ 0.65515713  0.         -0.00337459  0.         -0.        ]]
+: dA2 = [[ 0.58180856  0.         -0.00299679  0.         -0.27715731]
+:  [ 0.          0.53159854 -0.          0.53159854 -0.34089673]
+:  [ 0.          0.         -0.00292733  0.         -0.        ]]
+
+#+begin_example
+Expected Output:
+
+dA1	[[ 0.36544439 0. -0.00188233 0. -0.17408748] [ 0.65515713 0. -0.00337459 0. -0. ]]
+dA2	[[ 0.58180856 0. -0.00299679 0. -0.27715731] [ 0. 0.53159854 -0. 0.53159854 -0.34089673] [ 0. 0. -0.00292733 0. -0. ]]
+#+end_example
+
+Now we can train our model:
+#+begin_src python :results output :exports both
+parameters = model(train_X, train_Y, keep_prob = 0.86, learning_rate = 0.3, image = "dropout-regularization-costs.png")
+
+print ("On the train set:")
+predictions_train = predict(train_X, train_Y, parameters)
+print ("On the test set:")
+predictions_test = predict(test_X, test_Y, parameters)
+#+end_src
+
+#+RESULTS:
+: Cost after iteration 0: 0.6543912405149825
+: Cost after iteration 10000: 0.0610169865749056
+: Cost after iteration 20000: 0.060582435798513114
+: On the train set:
+: Accuracy: 0.9289099526066351
+: On the test set:
+: Accuracy: 0.95
+
+[[file:dropout-regularization-costs.png]]
+
+The accuracy of our model went up again, to 95%.
+
+#+begin_src python :results file
+plt.title("Model with dropout")
+axes = plt.gca()
+axes.set_xlim([-0.75,0.40])
+axes.set_ylim([-0.75,0.65])
+plot_decision_boundary(lambda x: predict_dec(parameters, x.T), train_X, train_Y)
+plt.savefig("dropout-regularization-predictions.png")
+plt.close()
+
+"dropout-regularization-predictions.png"
+#+end_src
+
+#+RESULTS:
+[[file:dropout-regularization-predictions.png]]
+
+And our model looks like it fits the data pretty well!
+
+takeaways:
+- only use dropout layers in training, it will introduce noise to your model in
+  testing.
+- You need to apply dropout to the same units during forward and backward
+  propagation
+- remember to scale the remaining activations after dropping units in a layer
+- Use dropout layers where the complexity is most likely to occur, in big layers
+  with many inputs, where the model can accidentally learn many unnecessary
+  features
+- dropping units is a random act, so the cost function is no longer
+  well-defined, this can make debugging harder
