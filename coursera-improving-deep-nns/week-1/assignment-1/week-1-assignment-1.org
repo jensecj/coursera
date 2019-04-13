@@ -28,7 +28,7 @@ plt.rcParams['image.cmap'] = 'gray'
 #+end_src
 
 Next, let us create and load the dataset we'll be using, and have a look at it.
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 def load_dataset():
     np.random.seed(1)
     train_X, train_Y = sklearn.datasets.make_circles(n_samples=300, noise=.05)
@@ -238,7 +238,7 @@ predictions_test = [[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 
 It doesn't look like our model learned a whole lot.
 
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 plt.title("Model with Zeros initialization")
 axes = plt.gca()
 axes.set_xlim([-1.5,1.5])
@@ -378,7 +378,7 @@ print (predictions_test)
 
 It looks like our model learned something about the dataset.
 
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 plt.title("Model with large random initialization")
 axes = plt.gca()
 axes.set_xlim([-1.5,1.5])
@@ -498,7 +498,7 @@ Accuracy: 0.96
 
 It worked very well! accuracy went all the way up to 96%.
 
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 plt.title("Model with He initialization")
 axes = plt.gca()
 axes.set_xlim([-1.5,1.5])

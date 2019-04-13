@@ -26,7 +26,7 @@ plt.rcParams['image.cmap'] = 'gray'
 
 Let's load and look at an example dataset.
 
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 def load_2D_dataset():
     data = scipy.io.loadmat('datasets/data.mat')
     train_X = data['X'].T
@@ -151,7 +151,7 @@ predictions_test = predict(test_X, test_Y, parameters)
 
 Seems good enough, an accuracy of 91.5% is great!
 
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 plt.title("Model without regularization")
 axes = plt.gca()
 axes.set_xlim([-0.75,0.40])
@@ -310,7 +310,7 @@ predictions_test = predict(test_X, test_Y, parameters)
 
 The accuracy on our test set went up to 93%.
 
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 plt.title("Model with L2-regularization")
 axes = plt.gca()
 axes.set_xlim([-0.75,0.40])
@@ -531,7 +531,7 @@ predictions_test = predict(test_X, test_Y, parameters)
 
 The accuracy of our model went up again, to 95%.
 
-#+begin_src python :results file
+#+begin_src python :results file :exports both
 plt.title("Model with dropout")
 axes = plt.gca()
 axes.set_xlim([-0.75,0.40])
