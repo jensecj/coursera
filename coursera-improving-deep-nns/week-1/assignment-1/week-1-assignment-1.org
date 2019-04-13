@@ -1,0 +1,522 @@
+#+OPTIONS: toc:nil html-postamble:nil
+#+PROPERTY: header-args:python :session week-1-sess-1 :tangle initialize.py :exports code
+
+* Initialization
+In this assignment we'll focus on initializing deep neural nets in a manner
+which avoids the vanishing / exploding gradients problem. This, will in turn
+help our optimization converge faster, and increases the odds of converging at a
+lower training error.
+
+We have already implemented the deep neural network in the Introductory course,
+so all the code for activation functions, cost functions, backpropagation,
+etc. is left in [[file:init_utils.py][init_utils.py]].
+
+** setup
+
+First, lets import the libraries we'll be using
+#+begin_src python :results silent
+import numpy as np
+import matplotlib.pyplot as plt
+import sklearn
+import sklearn.datasets
+from init_utils import sigmoid, relu, compute_loss, forward_propagation, backward_propagation
+from init_utils import update_parameters, predict, plot_decision_boundary, predict_dec
+
+plt.rcParams['figure.figsize'] = (7.0, 4.0) # set default size of plots
+plt.rcParams['image.interpolation'] = 'nearest'
+plt.rcParams['image.cmap'] = 'gray'
+#+end_src
+
+Next, let us create and load the dataset we'll be using, and have a look at it.
+#+begin_src python :results file
+def load_dataset():
+    np.random.seed(1)
+    train_X, train_Y = sklearn.datasets.make_circles(n_samples=300, noise=.05)
+    np.random.seed(2)
+    test_X, test_Y = sklearn.datasets.make_circles(n_samples=100, noise=.05)
+    
+    # visualize the data
+    plt.scatter(train_X[:, 0], train_X[:, 1], c=train_Y, s=40, cmap=plt.cm.Spectral);
+    
+    train_X = train_X.T
+    train_Y = train_Y.reshape((1, train_Y.shape[0]))
+    test_X = test_X.T
+    test_Y = test_Y.reshape((1, test_Y.shape[0]))
+    return train_X, train_Y, test_X, test_Y
+
+train_X, train_Y, test_X, test_Y = load_dataset()
+
+plt.savefig('circles.png')
+plt.close()
+
+'circles.png'
+#+end_src
+
+#+RESULTS:
+[[file:circles.png]]
+
+Next up, lets look at how initializing the weights to different values has an
+effect on the output of training a model.
+
+Well look at:
+- Zero initialization
+- Random initialization
+- He initialization
+
+The model looks like this:
+#+begin_src python :results silent
+def model(X, Y, learning_rate = 0.01, num_iterations = 15000, print_cost = True, initialization = "he", image = "costs.png"):
+    """
+    Implements a three-layer neural network: LINEAR->RELU->LINEAR->RELU->LINEAR->SIGMOID.
+    
+    Arguments:
+    X -- input data, of shape (2, number of examples)
+    Y -- true "label" vector (containing 0 for red dots; 1 for blue dots), of shape (1, number of examples)
+    learning_rate -- learning rate for gradient descent
+    num_iterations -- number of iterations to run gradient descent
+    print_cost -- if True, print the cost every 1000 iterations
+    initialization -- flag to choose which initialization to use ("zeros","random" or "he")
+    
+    Returns:
+    parameters -- parameters learnt by the model
+    """
+    grads = {}
+    costs = [] # to keep track of the loss
+    m = X.shape[1] # number of examples
+    layers_dims = [X.shape[0], 10, 5, 1]
+    
+    # Initialize parameters dictionary.
+    if initialization == "zeros":
+        parameters = initialize_parameters_zeros(layers_dims)
+    
+    elif initialization == "random":
+        parameters = initialize_parameters_random(layers_dims)
+    
+    elif initialization == "he":
+        parameters = initialize_parameters_he(layers_dims)
+        
+    # Loop (gradient descent)
+    
+    for i in range(0, num_iterations):
+        
+        # Forward propagation: LINEAR -> RELU -> LINEAR -> RELU -> LINEAR -> SIGMOID.
+        a3, cache = forward_propagation(X, parameters)
+        
+        # Loss
+        cost = compute_loss(a3, Y)
+        
+        # Backward propagation.
+        grads = backward_propagation(X, Y, cache)
+        
+        # Update parameters.
+        parameters = update_parameters(parameters, grads, learning_rate)
+        
+        # Print the loss every 1000 iterations
+        if print_cost and i % 1000 == 0:
+            print("Cost after iteration {}: {}".format(i, cost))
+            costs.append(cost)
+            
+    # plot the loss
+    plt.plot(costs)
+    plt.ylabel('cost')
+    plt.xlabel('iterations (per hundreds)')
+    plt.title("Learning rate =" + str(learning_rate))
+    plt.savefig(image)
+    plt.close()
+    
+    return parameters
+#+end_src
+
+** zero initialization
+First off, lets try initializing all the parameters for the model to zero, and
+see what happens.
+
+#+begin_src python :results silent
+def initialize_parameters_zeros(layers_dims):
+    """
+    Arguments:
+    layer_dims -- python array (list) containing the size of each layer.
+    
+    Returns:
+    parameters -- python dictionary containing your parameters "W1", "b1", ..., "WL", "bL":
+                    W1 -- weight matrix of shape (layers_dims[1], layers_dims[0])
+                    b1 -- bias vector of shape (layers_dims[1], 1)
+                    ...
+                    WL -- weight matrix of shape (layers_dims[L], layers_dims[L-1])
+                    bL -- bias vector of shape (layers_dims[L], 1)
+    """
+    parameters = {}
+    L = len(layers_dims)            # number of layers in the network
+    
+    for l in range(1, L):
+        parameters['W' + str(l)] = np.zeros((layers_dims[l], layers_dims[l-1]))
+        parameters['b' + str(l)] = np.zeros((layers_dims[l], 1))
+        
+    return parameters
+#+end_src
+
+#+begin_src python :results output :exports both
+parameters = initialize_parameters_zeros([3,2,1])
+print("W1 = " + str(parameters["W1"]))
+print("b1 = " + str(parameters["b1"]))
+print("W2 = " + str(parameters["W2"]))
+print("b2 = " + str(parameters["b2"]))
+#+end_src
+
+#+RESULTS:
+: W1 = [[0. 0. 0.] [0. 0. 0.]]
+: b1 = [[0.] [0.]]
+: W2 = [[0. 0.]]
+: b2 = [[0.]]
+
+#+begin_example
+Expected Output:
+W1	[[ 0. 0. 0.] [ 0. 0. 0.]]
+b1	[[ 0.] [ 0.]]
+W2	[[ 0. 0.]]
+b2	[[ 0.]]
+#+end_example
+
+Now lets train the model!
+#+begin_src python :results output :exports both
+parameters = model(train_X, train_Y, initialization = "zeros", image = "zero-weights-model-costs.png")
+print ("On the train set:")
+predictions_train = predict(train_X, train_Y, parameters)
+print ("On the test set:")
+predictions_test = predict(test_X, test_Y, parameters)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Cost after iteration 0: 0.6931471805599453
+Cost after iteration 1000: 0.6931471805599453
+Cost after iteration 2000: 0.6931471805599453
+Cost after iteration 3000: 0.6931471805599453
+Cost after iteration 4000: 0.6931471805599453
+Cost after iteration 5000: 0.6931471805599453
+Cost after iteration 6000: 0.6931471805599453
+Cost after iteration 7000: 0.6931471805599453
+Cost after iteration 8000: 0.6931471805599453
+Cost after iteration 9000: 0.6931471805599453
+Cost after iteration 10000: 0.6931471805599455
+Cost after iteration 11000: 0.6931471805599453
+Cost after iteration 12000: 0.6931471805599453
+Cost after iteration 13000: 0.6931471805599453
+Cost after iteration 14000: 0.6931471805599453
+On the train set:
+Accuracy: 0.5
+On the test set:
+Accuracy: 0.5
+#+end_example
+
+[[file:zero-weights-model-costs.png]]
+
+Bugger-all happens.
+
+Lets examine the results of our training:
+
+#+begin_src python :results output :exports both
+print ("predictions_train = " + str(predictions_train))
+print ("predictions_test = " + str(predictions_test))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+predictions_train = [[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0]]
+predictions_test = [[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]]
+#+end_example
+
+It doesn't look like our model learned a whole lot.
+
+#+begin_src python :results file
+plt.title("Model with Zeros initialization")
+axes = plt.gca()
+axes.set_xlim([-1.5,1.5])
+axes.set_ylim([-1.5,1.5])
+plot_decision_boundary(lambda x: predict_dec(parameters, x.T), train_X, train_Y)
+plt.savefig('zero-weights-model-predictions.png')
+plt.close()
+
+'zero-weights-model-predictions.png'
+#+end_src
+
+#+RESULTS:
+[[file:zero-weights-model-predictions.png]]
+
+The model is prediction 0 for all examples. The model fails to learn anything,
+and this is because it fails to break the symmetry we have when we initialized
+all the weights to 0, since they're all the same, each iteration of updating the
+weights, move exactly the same (nothing in this case, because everything is 0),
+and the combination turns out to be linear. One way to break this symmetry is to
+initialize the weights to random values. We do not have to bother with
+initializing the biases to random values if we initialize the weights, since we
+already break the symmetry.
+
+** random initialization
+Here we'll try to initialize the weights to some "big" random values (big in the
+sense that they're relatively far from the [0,1] space, e.g. -12 and 27)
+
+#+begin_src python :results silent
+def initialize_parameters_random(layers_dims):
+    """
+    Arguments:
+    layer_dims -- python array (list) containing the size of each layer.
+    
+    Returns:
+    parameters -- python dictionary containing your parameters "W1", "b1", ..., "WL", "bL":
+                    W1 -- weight matrix of shape (layers_dims[1], layers_dims[0])
+                    b1 -- bias vector of shape (layers_dims[1], 1)
+                    ...
+                    WL -- weight matrix of shape (layers_dims[L], layers_dims[L-1])
+                    bL -- bias vector of shape (layers_dims[L], 1)
+    """
+    np.random.seed(3)               # This seed makes sure your "random" numbers will be the as ours
+    parameters = {}
+    L = len(layers_dims)            # integer representing the number of layers
+    
+    for l in range(1, L):
+        parameters['W' + str(l)] = np.random.randn(layers_dims[l], layers_dims[l-1]) * 10
+        parameters['b' + str(l)] = np.zeros((layers_dims[l], 1))
+        
+    return parameters
+#+end_src
+
+#+begin_src python :results output :exports both
+parameters = initialize_parameters_random([3, 2, 1])
+print("W1 = " + str(parameters["W1"]))
+print("b1 = " + str(parameters["b1"]))
+print("W2 = " + str(parameters["W2"]))
+print("b2 = " + str(parameters["b2"]))
+#+end_src
+
+#+RESULTS:
+: W1 = [[ 17.88628473   4.36509851   0.96497468] [-18.63492703  -2.77388203  -3.54758979]]
+: b1 = [[0.] [0.]]
+: W2 = [[-0.82741481 -6.27000677]]
+: b2 = [[0.]]
+
+#+begin_example
+Expected Output:
+
+W1	[[ 17.88628473 4.36509851 0.96497468] [-18.63492703 -2.77388203 -3.54758979]]
+b1	[[ 0.] [ 0.]]
+W2	[[-0.82741481 -6.27000677]]
+b2	[[ 0.]]
+#+end_example
+
+Lets try training our model with these weights.
+
+#+begin_src python :results output :exports both
+parameters = model(train_X, train_Y, initialization = "random", image = "random-weights-model-costs.png")
+print ("On the train set:")
+predictions_train = predict(train_X, train_Y, parameters)
+print ("On the test set:")
+predictions_test = predict(test_X, test_Y, parameters)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Cost after iteration 0: inf
+Cost after iteration 1000: 0.6230826383422161
+Cost after iteration 2000: 0.5979092644215072
+Cost after iteration 3000: 0.5636423064713603
+Cost after iteration 4000: 0.5501354510918317
+Cost after iteration 5000: 0.5444286441165198
+Cost after iteration 6000: 0.5374292737661626
+Cost after iteration 7000: 0.47489482474980277
+Cost after iteration 8000: 0.39778296964654125
+Cost after iteration 9000: 0.393475314874066
+Cost after iteration 10000: 0.3920307894812658
+Cost after iteration 11000: 0.38925879736001673
+Cost after iteration 12000: 0.386146238625871
+Cost after iteration 13000: 0.3849817063516035
+Cost after iteration 14000: 0.38279120413237433
+On the train set:
+Accuracy: 0.83
+On the test set:
+Accuracy: 0.86
+#+end_example
+
+[[file:random-weights-model-costs.png]]
+
+Now something is happening. The model broke symmetry and the accuracy shot up to
+86%.
+
+The `inf' as the cost for iteration 0 is because of numerical round-off issues,
+turns out not to matter much for this case.
+
+#+begin_src python :results output :exports both
+print (predictions_train)
+print (predictions_test)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+[[1 0 1 1 0 0 1 1 1 1 1 0 1 0 0 1 0 1 1 0 0 0 1 0 1 1 1 1 1 1 0 1 1 0 0 1
+  1 1 1 1 1 1 1 0 1 1 1 1 0 1 0 1 1 1 1 0 0 1 1 1 1 0 1 1 0 1 0 1 1 1 1 0
+  0 0 0 0 1 0 1 0 1 1 1 0 0 1 1 1 1 1 1 0 0 1 1 1 0 1 1 0 1 0 1 1 0 1 1 0
+  1 0 1 1 0 0 1 0 0 1 1 0 1 1 1 0 1 0 0 1 0 1 1 1 1 1 1 1 0 1 1 0 0 1 1 0
+  0 0 1 0 1 0 1 0 1 1 1 0 0 1 1 1 1 0 1 1 0 1 0 1 1 0 1 0 1 1 1 1 0 1 1 1
+  1 0 1 0 1 0 1 1 1 1 0 1 1 0 1 1 0 1 1 0 1 0 1 1 1 0 1 1 1 0 1 0 1 0 0 1
+  0 1 1 0 1 1 0 1 1 0 1 1 1 0 1 1 1 1 0 1 0 0 1 1 0 1 1 1 0 0 0 1 1 0 1 1
+  1 1 0 1 1 0 1 1 1 0 0 1 0 0 0 1 0 0 0 1 1 1 1 0 0 0 0 1 1 1 1 0 0 1 1 1
+  1 1 1 1 0 0 0 1 1 1 1 0]]
+[[1 1 1 1 0 1 0 1 1 0 1 1 1 0 0 0 0 1 0 1 0 0 1 0 1 0 1 1 1 1 1 0 0 0 0 1
+  0 1 1 0 0 1 1 1 1 1 0 1 1 1 0 1 0 1 1 0 1 0 1 0 1 1 1 1 1 1 1 1 1 0 1 0
+  1 1 1 1 1 0 1 0 0 1 0 0 0 1 1 0 1 1 0 0 0 1 1 0 1 1 0 0]]
+#+end_example
+
+It looks like our model learned something about the dataset.
+
+#+begin_src python :results file
+plt.title("Model with large random initialization")
+axes = plt.gca()
+axes.set_xlim([-1.5,1.5])
+axes.set_ylim([-1.5,1.5])
+plot_decision_boundary(lambda x: predict_dec(parameters, x.T), train_X, train_Y)
+plt.savefig("random-weights-model-predictions.png")
+plt.close()
+
+"random-weights-model-predictions.png"
+#+end_src
+
+#+RESULTS:
+[[file:random-weights-model-predictions.png]]
+
+But the model looks a bit weird. It turns out that when we initialize the
+weights to big values, it skews our results in the end, in the case of this
+model, we're outputting using sigmoid, which has a range of [0,1], and it incurs
+a big loss when it misclassifies an example. This is a case of the exploding /
+vanishing gradients problem.
+
+** He initialization
+So if we're not supposed to initialize the weights to big values, how small
+should they be?
+
+He initialization works pretty well in practice (named after the He et al. paper
+from 2015).
+
+All we need to do is scale each weight by $\sqrt(\frac{2}{\text{units in
+previous layer}})$.
+
+(in the case of using the ReLU activation, when using
+$tanh$, replace 2 with 1).
+
+#+begin_src python :results silent
+def initialize_parameters_he(layers_dims):
+    """
+    Arguments:
+    layer_dims -- python array (list) containing the size of each layer.
+    
+    Returns:
+    parameters -- python dictionary containing your parameters "W1", "b1", ..., "WL", "bL":
+                    W1 -- weight matrix of shape (layers_dims[1], layers_dims[0])
+                    b1 -- bias vector of shape (layers_dims[1], 1)
+                    ...
+                    WL -- weight matrix of shape (layers_dims[L], layers_dims[L-1])
+                    bL -- bias vector of shape (layers_dims[L], 1)
+    """
+    np.random.seed(3)
+    parameters = {}
+    L = len(layers_dims) - 1 # integer representing the number of layers
+     
+    for l in range(1, L + 1):
+        parameters['W' + str(l)] = np.random.randn(layers_dims[l], layers_dims[l-1]) * np.sqrt(2 / layers_dims[l-1])
+        parameters['b' + str(l)] = np.zeros((layers_dims[l], 1))
+        
+    return parameters
+#+end_src
+
+#+begin_src python :results output :exports both
+parameters = initialize_parameters_he([2, 4, 1])
+print("W1 = " + str(parameters["W1"]))
+print("b1 = " + str(parameters["b1"]))
+print("W2 = " + str(parameters["W2"]))
+print("b2 = " + str(parameters["b2"]))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+W1 = [[ 1.78862847  0.43650985] [ 0.09649747 -1.8634927 ] [-0.2773882  -0.35475898] [-0.08274148 -0.62700068]]
+b1 = [[0.] [0.] [0.] [0.]]
+W2 = [[-0.03098412 -0.33744411 -0.92904268  0.62552248]]
+b2 = [[0.]]
+#+end_example
+
+#+begin_example
+Expected Output:
+
+W1	[[ 1.78862847 0.43650985] [ 0.09649747 -1.8634927 ] [-0.2773882 -0.35475898] [-0.08274148 -0.62700068]]
+b1	[[ 0.] [ 0.] [ 0.] [ 0.]]
+W2	[[-0.03098412 -0.33744411 -0.92904268 0.62552248]]
+b2	[[ 0.]]
+#+end_example
+
+Training the model:
+#+begin_src python :results output :exports both
+parameters = model(train_X, train_Y, initialization = "he", image = "he-weights-model-costs.png")
+print ("On the train set:")
+predictions_train = predict(train_X, train_Y, parameters)
+print ("On the test set:")
+predictions_test = predict(test_X, test_Y, parameters)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Cost after iteration 0: 0.8830537463419761
+Cost after iteration 1000: 0.6879825919728063
+Cost after iteration 2000: 0.6751286264523371
+Cost after iteration 3000: 0.6526117768893807
+Cost after iteration 4000: 0.6082958970572938
+Cost after iteration 5000: 0.5304944491717495
+Cost after iteration 6000: 0.41386458170717944
+Cost after iteration 7000: 0.3117803464844441
+Cost after iteration 8000: 0.23696215330322562
+Cost after iteration 9000: 0.18597287209206836
+Cost after iteration 10000: 0.15015556280371814
+Cost after iteration 11000: 0.12325079292273548
+Cost after iteration 12000: 0.0991774654652593
+Cost after iteration 13000: 0.0845705595402428
+Cost after iteration 14000: 0.07357895962677363
+On the train set:
+Accuracy: 0.9933333333333333
+On the test set:
+Accuracy: 0.96
+#+end_example
+
+[[file:he-weights-model-costs.png]]
+
+It worked very well! accuracy went all the way up to 96%.
+
+#+begin_src python :results file
+plt.title("Model with He initialization")
+axes = plt.gca()
+axes.set_xlim([-1.5,1.5])
+axes.set_ylim([-1.5,1.5])
+plot_decision_boundary(lambda x: predict_dec(parameters, x.T), train_X, train_Y)
+plt.savefig("he-weights-model-predictions.png")
+
+"he-weights-model-predictions.png"
+#+end_src
+
+#+RESULTS:
+[[file:he-weights-model-predictions.png]]
+
+Looks like a great fit!
+
+Key takeaways:
+- initializing parameters to different values, give different results
+- initialization all parameters to 0 does not work
+- initialize with random values to break symmetry
+- initialization weights with big random values does not give great results
+- He-initialization works well for the ReLU activation
