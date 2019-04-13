@@ -1,0 +1,292 @@
+* week 1
+Finding the right hyperparameters for a model can take time, there are many
+things that we need to take into account, or simply just test for.
+
+There are however things we can do to improve the way to structure, build, test,
+and run models:
+
+** splitting data
+split the data into *training*, *cross-validation / dev*, and *testing*
+sets. the training set is used to train the model, then the CV set is used to
+find the best trained model, and once we have a "good" model, we can test it on
+the test set. the split ratio depends on how much data you have to start with,
+the CV and test sets need to be big enough to validate that the model works on
+data it has not seen before, and that it does not overfit on the training data,
+usually these ratios move from 60-20-20, all the way to 98-1-1 for very big
+datasets. An important note remember, is that the CV and test sets come from the
+same distribution.
+
+** bias-variance trade-off
+high bias = under-fit the data
+high variance = over-fit the data
+
+Your job is to hit the right trade-off, so the fit to the data is "just-right".
+
+You can usually spot high variance if your error-rate on the dev set is low, but
+it is significantly higher on the testing set, which indicates that your model
+has over-fit on the dev-set.
+
+On the other hand, if the error-rates on both the dev and training sets are both
+not very good, the model is probably under-fit to the data, e.g. high-bias.
+
+** a good process
+- does the model have high bias?
+try a bigger network, more layers / units, train longer, is there a good NN
+architecture for your problem?.
+
+- does the model have high variance?
+get more data. regularize the data. adjust NN architecture.
+
+** regularization
+Lets look at how to reduce variance by using regularization.
+
+*** in logistic regression
+First, lets look at the case for logistic regression.
+
+Recall that the cost function is
+$J(w,b) = \frac{1}{m}\sum_{i=1}^mL(\hat{y}^{(i)}, y^{(i)})$
+where $w,b$ are the parameters weight, and bias. $L$ is the loss function.
+$\hat{y}^{(i)}$ are the labels, and $y^{(i)}$ are the predictions.
+
+To this, we add the /regularization parameter/, $\frac{\lambda}{2m}||w||^2_2$
+where $||w||^2_2 = \sum_{j=1}^{n^x}w_j^2 = w^Tw$
+
+This is known as $L2$ regularization, because were using the euclidean norm of
+the parameter w.
+
+We could add a regularization parameter for the bias parameter as well, but in
+practice the weights are usually much higher in dimensions, and out-play the
+influence of the regularized bias by a lot, so its does not make much
+difference.
+
+L1 regularization is less used, here we use the L1-norm instead of the euclidean
+norm, which in practice may lead the weight matrix to turn sparse.
+
+the $\lambda$ parameter, is another hyperparameter which will need to be tuned
+for achieving the best model.
+
+*** in neural networks
+Recall the cost function:
+
+$J(W,b) = \frac{1}{m}\sum_{i=1}^m L(\hat{y}^{(i)}, y^{(i)})$
+
+to which we add the regularization parameter
+
+$\frac{\lambda}{2m}\sum_{l=i}^L ||W||^2$
+
+where $||W||^2 = \sum_i \sum_j (W_{ij})^2$.
+
+Which is the sum of the squares of all elements in the matrix. this is also
+known as the Frobenius-norm.
+
+To integrate this into our gradient descent, we need to add the $\lambda$ term
+to our gradient calculation, so when updating the gradients of the weights, we
+now do:
+
+$dW \mathrel{+}= \frac{\lambda}{m}W$
+
+and continue updating the parameters as usual.
+
+Because we're just updating the weights, and with a $\lambda$ scaled value which
+reduces the impact from the weights, it is also known as "weight-decay".
+
+*** why does it work?
+Increasing the $\lambda$ term reduces the impact of the hidden units in the
+network, "zeroing" some of the small ones out, which essentially leads to a
+"simpler" network, which should generalize better, because it does not have the
+ability to fit the data too complexly.
+
+Look at the $sigmoid$ activation function for example, if we increase $\lambda$,
+we reduce $W$. the linear output of a layer is $Z = W^TA+b$, which will then be
+used to calculate the activation for the next layer, but if these values become
+smaller, they stay in the linear part of the $sigmoid$ function, so the
+activations turn out to be roughly linear, which simplifies the model.
+
+*** dropout regularization
+Dropout does what is says on the can, a dropout layer has an associated
+probability, and for each node in that layer, we drop it with that probability.
+
+Culling units like this randomly reduces the influence of units, reducing
+non-linearity.
+
+One thing to note: you need to readjust the activations to account for the lost
+influence of the dropped units, this is done by reducing the remaining units
+with the inverse of the dropping-probability. It is also important to drop
+different units on each iteration, so the dropout if not just a permanent change
+in the network structure.
+
+Once you have trained and cross-validated a model, and you need to test the
+model, you do not use dropout, this will just add noise to the prediction.
+
+**** why does it work?
+Dropping units mean that a later unit in the network cannot rely strongly on a
+single input unit, so it has to spread out the weights, which has the effect of
+shrinking the squared norms of those weights, like in L2-regularization.
+
+**** notes
+Dropping is usually used on big layers with many weights, where the most
+complexity usually arises, this is where the model is keen to overfit.
+
+The probability for dropping a units from a layer, is another hyperparameter
+which will need to be tuned to achieve a good model.
+
+A downside of using dropout is that the cost-function is no longer
+well-defined, because we have introduced a random element. so checking the
+performance of gradient descent will become harder.
+
+*** data augmentation
+Increasing the size of the training set will also help decrease the variance.
+
+One way to do this, if it is hard or costly to add new unique examples to the
+set, is to augment the set using the examples already present.
+
+Things like taking an image example and flipping it, adding small rotations or
+distortions, zooming, cropping, etc. could help by introducing variations, and
+increasing the data available to the model. Note that doing this adds a new
+non-independent example to the set, which is not as good as collecting new data,
+because they don't add as much new information as a new example would.
+
+*** early stopping
+While training we keep track of our errors for the training set, if we also
+track the error of out dev-set, we can stop early if we notice that the error on
+the dev-set increases. This should have the effect of stopping the training
+before the network overfits the data.
+
+** normalizing datasets
+We want to normalize our input features by calculating the mean and variance of
+our training data.
+
+We first subtract the mean of the dataset from all the values in the set:
+$\mu = \frac{1}{m} \sum_{i = 1}^m x^{(i)}$
+
+We then update our examples:
+$x := x - \mu$$
+
+Then we normalize the variance:
+first we calculate the variance for each feature
+$\sigma^2 = \frac{1}{m} \sum_{i=1}^m x^{(i)}**2$
+where $**2$ is the element-wise squaring function.
+
+then we update each example:
+$x \mathrel{/}= \sigma^2$
+
+Once this is done, we need to use the same parameters $\mu, \sigma^2$ to
+normalize any new data we want to test on.
+
+This process has the effect of "sphering-out" the contours of the data, making
+them easier to optimize.
+
+In practice this means that all input feature are on a similar scale, instead of
+some features begin [0,1], and maybe some [-24, 532], we try to keep all
+features in the [0,1] range.
+
+** vanishing and exploding gradients
+For big networks, units can turn out to vanish/die, or explode, if their weights
+turn out to be a bit larger, or a bit smaller than a multiplication by their
+identity, this is especially apparent with linear activation functions.
+
+We can intuit it be thinking about the case where each weight matrix is a
+multiplication of the activations in the layer by some scalar like 1.5, e.g.
+\begin{align*}
+w^{[l]} =
+\begin{bmatrix}
+1.5 & 0 \\
+0   & 1.5
+\end{bmatrix}
+\end{align*}
+
+if each of the layers has this form, we end up with an increase of $1.5^L$
+for $L$ layers, which increases very quickly for deep networks. Vice versa of
+the multiplication is decreasing, e.g. for a value 0.5, this in turn ends up
+tanking the final result for deep networks.
+
+It turns out that the gradients increase and decrease in a similar manner.
+
+** initializing weights in deep networks
+One way to fight the vanishing/exploding gradients problem is to carefully
+initialize the weights on the network.
+
+If an unit has many inputs, we want the weights for those inputs to be smaller,
+because we add those weights together to calculate the activation for the unit.
+
+One way to do this is to set the variance for each weight to be $\frac{1}{n}$
+for $n$ input units.
+
+for a whole layer, we add a variance parameter to the random initialization,
+this is done by $w^{[l]} = random * \sqrt(\frac{c}{n^{[l-1]}})$.
+
+Where $random$ is the usual random initialization for the layer $l$ (by sampling
+a random Gaussian variable), $c$ is some constant, and $n^{[l-1]}$ is the number
+of units in the layer before $l$.
+
+when using $ReLU$, using $c = 2$ usually works better. (called
+/He-initialization/, after the He et al. paper from 2015)
+
+when using $tanh$, usually use $c = 1$. (called /Xavier initialization/)
+
+The idea here is to make sure that each input to a unit is close to $mean = 1$,
+and standard variance ($Var = 1$).
+
+then the output of the linear part of a unit activation will have roughly
+the same shape, this is what helps with the vanishing/exploding gradient problem.
+
+This variance parameter can be another hyperparameter to tune when optimizing a
+model.
+
+** gradient checking
+To make sure that we have implemented backpropagation correctly, we can use a
+technique called gradient checking.
+
+essentially we calculate an approximation of the gradient, and compare it with
+our backpropagation calculation.
+
+Usually when calculating the derivative to update our gradients, we calculate
+$f(\theta + \epsilon)$, if we at the same time calculate $f(\theta - \epsilon)$,
+and use both to calculate our estimate of the derivative, it turns out we get a
+good estimate.
+
+This is done with $g(\theta) \approx \frac{f(\theta + \epsilon) - f(\theta -
+\epsilon)}{2 \epsilon}$.
+
+note: this is about twice as costly as the original, for obvious reasons, but in
+practice this may still be very useful, because the error is on the order of
+$O(\epsilon^2)$, instead of the original order of $O(\epsilon)$.
+
+To do gradient checking in practive, we take our parameters, and reshape them
+into a vector we call $\Theta$.
+
+This is done by first stacking all our weights, and then concatening the bias
+vectors.
+
+So the cost function turns into $J(\Theta)$.
+
+We also reshape our derivatives vector into a vector called $d\Theta$, in the
+same manner.
+
+Since each derivative has the same shape as its counterpart, the vectors
+$\Theta$ and $d\Theta$ will also share the same shape.
+
+The gradient checking question is then, "is $d\Theta$ the slope of $J(\Theta)$?"
+
+We calculate this using the approximation from earlier:
+
+for each $i \in \Theta$:
+$d\Theta_{approx}[i] = \frac{J(\theta_1, \theta_2, \dots, \theta_i + \epsilon,
+\dots) - J(\theta_1, \theta_2, \dots, \theta_i - \epsilon, \dots)}{2\epsilon}$
+
+which we can then compare with the "real" computed derivative ($d\Theta
+\mathrel{?}\approx \Theta$).
+
+which is usuallt done by check the euclidean distance between the two:
+$\frac{||d\Theta_{approx} - d\Theta||_2}{||d\Theta_{approx}||_2 + ||d\Theta||_2}
+< \epsilon$, for some small $\epsilon$, like $10^-7$.
+
+notes:
+- this is not used in training, just as a debugging tool for backpropagation.
+- this cannot be used with dropout layers, because the costfunction is no longer
+  well-defined.
+
+** notes on Yoshua Bengio interview
+Attention/memory in models can be a really big thing. it allows models to learn
+not just vectors, but essentially arbitrary data-structures.
+
