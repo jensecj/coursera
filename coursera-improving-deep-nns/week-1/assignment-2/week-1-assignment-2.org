@@ -326,7 +326,7 @@ plt.close()
 [[file:l2-regularization-predictions.png]]
 
 
-And our model does not overfit the training date anymore!
+And our model does not overfit the training data anymore!
 
 Some key takeaways:
 - the regularization parameter $\lambda$ is a hyperparameter which needs tuning
@@ -357,10 +357,11 @@ e.g. if we drop a unit with 0.5 probability (e.g. we drop half the units in a
 layer), we divide the activations from the layer with 0.5, in effect doubling
 their effect, this way the expected output stays the same.
 
-A simple way to do this is to introduce a new matrix $D$, which has the same
-shape as our weights $W$, where $D$ is initialized randomly to 0-or-1 depending
+A simple way to do this is to introduce a new vector $D$, which has the same
+shape as our activations $A^{[l]}$, for the layer $l$ were currently iterating
+over in forward propagation, where $D$ is initialized randomly to 0-or-1 depending
 on the probability of dropping units, for each iteration we can simple multiply
-these two matrices together when calculating our activations, and the
+these two vectors together when calculating our activations, and the
 corresponding units will be dropped for that iterations activation-calculation.
 
 #+begin_src python :results silent
