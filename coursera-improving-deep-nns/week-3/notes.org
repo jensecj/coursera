@@ -1,0 +1,187 @@
+* week 3
+
+** hyperparameters
+We have now looked a quite a number of hyperparameters, so how do we actually
+tweak them?
+
+The most important is probably the learning rate $\alpha$, tuning it first tends
+to make the move changes in how a networks learns, second in priority are the
+number of hidden units in a layer, the size of the mini-batch, and the EWA
+weight $\beta$. But it can depend on the architecture of your network.
+
+In deep neural networks it is usually hard to know in advance what good values
+for the hyperparameters could be, so they are usually initialized randomly, and
+tweaked from there.
+
+one method that if used is course to fine sampling, where initially, some
+hyperparameter is sampled from a big part of its space, and then, when gaining more
+knowledge, trying our smaller regions of the parameter-space.
+
+But how do we sample randomly from a hyperparameters parameter-space?
+
+if we're looking at e.g. the number of hidden units in a layer, we may think a
+value between 3-20 is fine, this value we can just pick uniformly at random from
+the range 3-20.
+
+But what if we're looking for a good learning rate, in the range of
+0.0001-1. if we pick this uniformly 90% of the values will lie in the 0.1-1
+range of the space, and only 10% will be between 0.0001-0.01, this does not seem
+like a good way to pick the value.
+
+A better way would be to pick the value from a logarithmic scale between
+0.0001-1.  in this type of scale, the value of the hyperparameter if more spread
+out, and in-line with how we would expect to pick a good random value.
+
+A way to do this is to use $log_{10}$, we simply change the space we're looking
+at, and sample uniformly from a logarithmic space, so if we want to sample from
+$a=0.0001$, to $b=1$, we would pick a value uniformly at random from the range
+$r \in [log_{10}(a), log_{10}(b)]$, and set our learning rate to $\alpha =
+10^r$.
+
+In the same vein, if we want to sample a value for our weight $\beta$ for EWA,
+we could be looking for value in the space $[0.9, 0.999]$, we could use the same
+method, and sample randomly from $r \in [log_{10}(0.9), log_{10}(0.999)] =
+[10^{-1}, 10^{-3}]$
+
+and set our parameter to $\beta = 1 - 10^r$.
+
+Note: it can be valuable to re-test hyperparameters after some time, even if you
+have tweaked them earlier, because the incoming data, or even something you did
+not know made any difference, could have changed.
+
+There are several methods for training a model, you could train several in
+parallel, or you could baby a single model and pay great attention to which
+hyperparameters change and how, the method very much depends on the architecture
+of your model, how much data you have, etc.
+
+** batch normalization
+We have already talked about normalizing input features.
+
+first we calculate the means, and subtract them.
+$\mu = \frac{1}{m}\sum_i x^(i)$
+$X = X - \mu$
+
+then we compute the variances, and normalize our data according to those
+variances.
+$\sigma^2 = \frac{1}{m} \sum_i x^{(i)2}$
+$X = X/\sigma^2$
+
+This has the effect of making our input values line in a more "circular" space,
+instead of a space which could be skewed in some direction.
+
+batch-normalization takes that idea and applies to each layer in a deep neural
+network.  We normalize the values of the linear output of each layer before
+handing it off to the activation functions and further to the next layer.
+
+for some layer $l$:
+$\mu = \frac{1}{m} \sum z^{(i)}$
+$\sigma^2 = \frac{1}{m} \sum (z_i - \mu)^2$
+$z^{(i)}_{norm} = \frac{z^{(i)} - \mu}{\sqrt(\sigma^2 + \epsilon)}$,
+where we add $\epsilon$ for stability.
+
+But we may not want our hidden units to always have a mean of 0, and a standard
+variance, it may make sense for them to have a different distribution, so we
+calculate $\tilde{z}$.
+
+$\tilde{z}^{(i)} = \gamma z_{norm}^{(i)} + \beta$, where $\gamma$ and $\beta$
+are learnable parameters of the model.
+
+note: we can see here that using $\gamma$ and $\beta$, we can set the mean of
+the value $z^{(i)}$ to what we want.
+
+The batch part of the name comes from the fact that we usually normalize on each
+mini-batch.  i.e. we calculate the linear part of all examples in the
+mini-batch, then perform batch-normalization for all those linear's, then
+calculate the activations for those normalized linear-parts, etc. so each
+batch-norm step is only looking at the examples in the current mini-batch.
+
+one thing to note: since batch-norm zeroes our the mean for the values in the
+layer, the bias parameter will be cancelled out, and no longer do anything,
+instead we have the parameter $\beta$ which ends up affecting the shift of the
+bias terms.
+
+*** why does it work?
+First, covariance-shift is when we have a look at some data, and we learn a
+representation of that data, but then, when we get more data, we find out that
+our representation is actually wrong, because the data has a different shape
+than we expected from only looking at the first examples, the covariance
+shifted.
+
+batch-norm reduces the amount of this shift. it ensures that no matter how the
+data changes, the mean and variances will remain the same.
+
+note: since batch-norm calculates mean and variance only for the current
+mini-batch, there is a slight amount of noise in each, they will change slightly
+from mini-batch to mini-batch, and since this noise is used in calculating the
+activations of a layer, it carries over. this has a small regularization effect,
+because each unit will rely slightly less on a single activation, because it has
+a small amount of noise. It is not the intend of batch-norm, and should not be
+used as such, it is just an interesting side-effect.
+
+When we need to test our model, we usually don't have an entire mini-batch of
+examples we want to predict, usually it is just a single example.
+
+recall that when we do feature normalization, we need to remember the mean and
+variance of our input features, because we need to make sure that when we test,
+we test on data with the same mean and variance, the same holds true for doing
+batch-normalization. Here instead, we don't have any single mean of variance
+that makes sense to remember, so instead we estimate them.
+
+This estimate we create by keeping an exponential weighted moving average of the
+mean and variance we calculate when iterating through each layer in each batch.
+
+At test time, we just use the latest value of the running averages of the mean
+and variance, and use those to normalize the example we want to test.
+
+** softmax
+So far we have looked mostly at binary-classification, separating a dataset into
+two parts.
+
+But sometimes we want to separate a dataset into more classes of things.
+
+One way of doing this is using the activation function $softmax$.
+This is usually done by having $C$ output units, each with a probability of the
+output belonging to the class represented by that unit.
+Note: the probabilities should sum to 1.
+
+This is also known as multi-class-classification.
+
+If we have some layer $l$:
+\begin{align*}
+z^{[l]} =
+\begin{bmatrix}
+5    \\
+2    \\
+-1 \\
+3
+\end{bmatrix}
+\end{align*}
+
+We calculate a vector $t$:
+\begin{align*}
+t =
+\begin{bmatrix}
+e^5    \\
+e^2    \\
+e^{-1} \\
+e^3
+\end{bmatrix}
+\end{align*}
+
+$softmax$ is then:
+\begin{align*}
+softmax(z^{[l]}) =
+\begin{bmatrix}
+&e^5    &/ &(e^5 + e^2 + e^{-1} + e^3) \\
+&e^2    &/ &(e^5 + e^2 + e^{-1} + e^3) \\
+&e^{-1} &/ &(e^5 + e^2 + e^{-1} + e^3) \\
+&e^-3   &/ &(e^5 + e^2 + e^{-1} + e^3)
+\end{bmatrix}
+\end{align*}
+
+Note: softmax is different from other activation functions, instead of a scalar,
+it expects a vector, because it normalizes over all the values to calculate an
+output.
+
+$softmax$ is a generalization of logistic regression to $C$ classes, if we
+choose $C = 2$, softmax is essentially just logistic regression.
