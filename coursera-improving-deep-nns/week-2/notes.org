@@ -1,0 +1,161 @@
+* week 2
+
+** mini-batch gradient descent
+Until now we have done gradient descent by stacking all our training examples in
+a matrix and applying gradient descent to that matrix, all examples at once, in
+one big batch, which is why its called /batch gradient-descent/. But what if we
+have 10,000,000 examples? This method can be restrictively slow.
+
+One way to levy this is to split the training set up into smaller sets, called
+mini-batches, each with e.g. 1000 examples (1000 pairs of example+label), and
+them apply gradient-descent to that batch, and once that is done, you move onto
+the next batch, this approach is called /mini-batch gradient-descent/.
+
+Here we'll use the curly-brackets syntax when we're talking about batches,
+e.g. $X^{\{10\}}$ is the $X$ values for the 10'th batch.
+
+Each pass through a part of the training set is usually called an "epoch".
+
+One notable difference when using mini-batch gradient descent is when plotting
+the cost for each iteration of training, the cost may not go down monotonically,
+because one batch may be "easier" than another, but overall the cost should
+still trend downward if your network is improving.
+
+You can look at batch-gradient-descent as a special case of mini-batch
+gradient-descent, where the batch-size is just set to the number of examples you
+have, so you only take a single iteration over the dataset. On the other hand,
+if you set the mini-batch size to 1, so you do an iteration over the dataset for
+each example, one at a time, it is known as /stochastic gradient-descent/.
+
+Unlike BGD, SGD never converges, but will on average head in the right
+direction, but may sometimes move away from 'goal'.
+
+the main trade-off between these types of gradient descent is the amount of time
+it takes to calculate each iteration. BGD is slow, but learns greatly, SGD is
+fast, but noisy, so the best results usually comes from something in-between.
+
+This mini-batch size is yet another hyperparameter for your model.
+
+typical mini-batch sizes are usually between 64-512. But if you have a small
+dataset (e.g. 2000-5000 examples), you could likely just use batch gradient
+descent.
+
+Make sure that each mini-batch fits in CPU (or GPU) cache, otherwise you can hit
+severe performance degradation.
+
+How to partition a dataset into mini-batches:
+- shuffle the dataset first, to ensure that there is no hidden structure
+- split into sizes of each mini-batch (the last batch may be smaller)
+
+remember to keep the inputs and their labels together.
+
+** exponentially weighted moving averages
+A method to average over some number of known data points.
+
+$V_t = \beta V_{t-1} + (1-\beta) \Theta_t$
+where $V_t$ is our moving average, $\beta$ is the weight, $V_{t-1}$ is the
+previous average, and $\Theta_t$ is the value of the current data point.
+
+We can think of this average as averaging over the last $\frac{1}{1-\beta}$
+entries.
+
+so with $\beta = 0.9$, it is an average over the last $\frac{1}{1-0.9} = 10$
+entries.
+
+And $\beta = 0.98$ becomes an average over the last $\frac{1}{0.98}=50$ entries.
+
+For a higher value of $\beta$, you'll notice that as the moving average sees
+more and more datapoints, it will 'react' more slowly, because its averaging
+over a bigger number of previous entries.
+
+Usually when implementing EWA, we initialize the first datapoint to a value
+of 0. But doing this gives us a very "incorrect" value for the initial phrase of
+the moving average.
+
+To improve the accuracy our the average, we can use a method called bias-correction.
+
+This is done by taking our moving average for some entry $t$, updating it to
+$V_t = \frac{V_t}{1-\beta^t}$.
+
+This is usually only necessary if you need to worry about the bias from the
+initial "warm-up" of EWA.
+
+$\beta$ is another hyperparameter you can tune, although usually a value of 0.9
+works fine.
+
+** gradient descent with momentum
+hypothesis: we can make our gradient-descent faster by computing an EWA of our
+gradients and using that to update our weights instead.
+
+The idea is that if our gradient descent is oscillating, but still moving
+towards the goal, then using a moving average can help "smooth" our the
+movement, and stump the oscillation, since the derivatives towards the goal all
+point in the same directions, but the derivatives of the oscillating moves,
+would on average "zero-out".
+
+** RMSProp
+Root-Mean-Square Propagation.
+
+Instead of using EWA, we can use RMSProp.
+
+When calculating the gradients, we also calculate a root-mean-square, this is
+done as follows: $S_\Theta = \beta S_\Theta + (1-\beta)\Theta^2$ for some
+parameter $\Theta$.
+
+And when updating the weights, they are now updated with:
+$\Theta := \Theta - \alpha \frac{\nabla_\Theta}{\sqrt{S_{\Theta}}}$
+
+Which has the same effect as GD with momentum, in smoothing the direction of our
+descent. The effect is because we now usually update the slope with a value
+counter the to skew of the gradients, e.g. if the derivatives in one direction
+is much larger than the derivatives in another direction, this 'corrects' the
+difference by damping.
+
+For numerical stability, we usually add a very small $\epsilon$ to the
+denominator in our update, just to make sure we never divide by zero.
+
+** Adam
+Adaptive Moment Estimation.
+Adam = GD + momentum + RMSProp
+
+We start by initializing our moving averages, and root-mean-squares to 0.
+
+then, for each iteration $t$:
+- compute parameters $\Theta$ using mini-batch gradient descent.
+- compute momentum: $V_\Theta = \beta_1 V_\Theta + (1-\beta_1)\nabla_\Theta$
+- compute rms: $S_\Theta = \beta_2 S_\Theta + (1-\beta_2)\nabla_\Theta^2$
+- bias correct: $V_\Theta^C = \frac{V_\Theta}{1-\beta_1^t}$, $S_\Theta^C = \frac{S_\Theta}{1-\beta_2^t}$
+- update parameters: $\Theta := \Theta - \alpha
+  \frac{V_\Theta^C}{\sqrt{S_\Theta^C + \epsilon}}$
+This algorithm has been show to work very well on a range of different
+architectures of networks, the best of both worlds, really!
+
+Usual values for the hyperparameters are $\beta_1 = 0.9$, $\beta_2 = 0.999$,
+$\epsilon = 10^-8$, and then the learning rate $\alpha$ is usually tweaked while
+training, to achieve the best result on the network.
+
+** learning rate decay
+Another way to avoid your gradient descent never converging, is to slowly
+reducing the learning rate $\alpha$, the idea is that in the beginning of
+training, we will need to take longer steps on the direction of the gradient,
+but as training goes on, we may end up in a situation where we keep stepping
+around the optimal solution, because the learning rate is too big.
+
+Some ways of doing this:
+
+decay each epoch $\alpha = \frac{1}{1 + \text{decay rate} \times \text{current epoch}}$
+
+exponential epoch decay $\alpha = 0.95^\text{current epoch}\times \alpha_0$
+
+There are many ways of doing this, some even do it manually.
+
+** local optima
+It turns out that local optima are not usually a problem for deep neural
+networks, because the probability to be at a point with a gradient of 0, and
+have no better way to move, in a very high dimensional-space is extremely low,
+most points with a gradient of 0, tend to be saddle-points, where we can move
+further down.
+
+What can be a problem touch, are plateaus, plateaus are relatively flat regions
+in our parameter space, and this can slow down learning a lot, but this is
+helped some using the techniques we have already looked at, like RMSProp and Momentum.
