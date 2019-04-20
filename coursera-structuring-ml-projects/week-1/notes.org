@@ -1,0 +1,86 @@
+* week 1
+There are many ways we can think of to improve our neural networks
+- collecting more data
+- creating a more diverse training set
+- train longer with gradient descent
+- try another optimization function, like Adam or RMSProp instead of GD
+- Try a bigger network
+- Try a smaller network
+- try dropout
+- try L2 regularization
+- change the network architecture (activation functions, number of layers and
+  units, etc.)
+- etc...
+
+
+But we can't try everything at once, and picking the wrong things can cause us
+to waste a lot of effort for no improvement, so how do we choose what to do?
+
+We can start off by looking at it from the bottom up, the things we really want
+when training network is
+
+- fit the training set well
+otherwise try another optimization function, a bigger network, ...
+
+- fit the dev set well
+otherwise try regularization, bigger training set
+
+- fit the test set well
+otherwise get a bigger dev set
+
+- does well in the real world
+otherwise go back and change dev set / cost function
+
+
+This is still very coarse grained, and we will dig into how to do these things
+in more detail later.
+
+** single number metrics
+
+One thing that really helps is using a single number evaluation metric, having a
+single number makes it easy to see if you're making progress, or regressing.
+
+The standard way of doing this is using F1-score, $\frac{2}{(1/P) + (1/R)}$, for
+precision $P$, and recall $R$, also known as the `harmonic mean'.
+
+This idea, of picking an "average" best performer, can be powerful, (if we're in
+a case where picking an average makes sense)
+
+** optimizing and satisficing metrics
+
+Another good way of choosing between models is by using satisficing and
+optimizing metrics.
+
+e.g. maximize accuracy, subject to a running time of less
+than 100ms. here the "maximize accuracy" part is the optimizing metric, the
+part we need to improve on, and the "running time < 100ms" is the satisficing
+metric, the conditions we need to satisfy before we can consider a solution.
+
+** training / dev / test sets
+One thing to make sure of when splitting datasets into the training/dev/test
+sets, is to keep examples in each set from the same distribution, don't split a
+language-dataset into an American-dev set, and an Asian-test set, it will just
+make life harder.
+
+The test data should look as much as possible as the data you expect to use it
+on in the future.
+
+** human error
+When looking at how well your algorithm does, you should take "Bayes optimal
+error" into account, BOE is the best that could possibly be done for some
+mapping, e.g. the best possible process to predict if a cat is in a picture or
+not, this error could be superhuman, but for some tasks, like image/voice
+recognition using human performance can be a good estimate for BOE, so comparing
+the results of an algorithm with humans can make sense in many cases.
+
+picking this error correctly makes it easier to figure out what to focus on when
+evaluating a model.
+
+Say you have an estimate of BOE of 0.5%, your training error is 5%, and you dev
+error is 6%. here the difference between the BOE and the training error is much
+larger than the error between your training and dev sets, this indicates that
+you have a bias problem that you should handle.
+
+If instead you have en estimate for BOE 0.5%, a training error of 1%, and a dev
+error of 5%, the difference between the training and dev errors are much bigger,
+and indicates you have a variance problem in your model.
