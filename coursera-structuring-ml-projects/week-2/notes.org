@@ -1,0 +1,149 @@
+* week 2
+** error analysis
+The process of manually inspecting the mistakes your algorithm makes to improve
+its performance.
+
+for example, in our cat-predictor, we could look at how well it does on
+classifying small-dogs, great-cats (lions, tigers, etc) and very blurry
+images. we would count how many images it mislabels for each of the categories
+we look at.
+
+Then we can look at the categories, and pick which ones are worth working on
+(viz. the categories where our predictor tends to mislabel of lot of images)
+
+** data cleaning
+Some datasets may have examples that are labels incorrectly. Cleaning those is
+important for achieving good performance for your model.
+
+Deep learning are reasonably robust to random errors in a training set, with big
+enough datasets all the correctly labels images out-weights the mislabels cases.
+
+The algorithms have a harder time with mislabeled examples that are not
+random. If some examples are mislabeled consistently, then the model will learn
+that consistency, and mislabel the examples.
+
+It can be a good idea to count the number of incorrectly labeled image during
+error-analysis.
+
+fixing the mislabeled cases in the dev-set can help improve how well you get
+insight into your model, it may not always to wort fixing mislabeled examples in
+the training set, it depends on how much it changes the error rate of the model.
+
+** building a deep learning system
+- setup dev/test sets, and a metric
+- Build the first system quickly - then iterate.
+- use bias/variance and error analysis to figure out where to go next
+
+Fill dev / test datasets with examples of data you want your model to do well
+on, make sure that the distribution of those sets are the same as the on the
+data you care about, otherwise you end up optimizing for something you don't
+care about.
+
+** bias and variance in mismatched data distributions
+If, like above, you need to fill your dev/test sets with data from a different
+distribution, it can be harder to reason about bias/variance problems. a way to
+fight this is to create yet another split of the data, viz. the training-dev
+set, which is from the same distribution as the training data.
+
+This way, you can see how well your model does on the training data, on new data
+it has never seen before (the training-dev set), and on data from the
+distribution you care about (the dev set). This makes it easier to reason about
+problems with variance (you did well on the training data, but poorly on the
+training-dev / dev sets).
+
+You can also see if you have a data mismatch problem (your model does well on
+the training data, and on the training-dev set, but poorly on the dev set,
+likely because the distributions are different)
+
+One way to look at the information you can gain from the error rates of your
+model:
+
+error from `human level' to 'training set'      => avoidable bias
+error from 'training set' to 'training-dev set' => variance
+error from 'training-dev set' to 'dev set'      => data mismatch
+error from `dev set' to 'test set'              => degree of overfitting
+
+** addressing data mismatch
+- try to understand the difference in the datasets(training / dev sets), using error analysis
+- make the datasets more similar (data augmentation) - or collect more similar data
+** transfer learning
+One of the really important goals of machine learning, is taking the networks we
+have trained on one set of data, and applying it to some other problem,
+e.g. using our cat-predicting neural network, and using it to predict cancers in
+radiology images.
+
+This is known as *transfer learning*.
+
+One part of this is finding a good architecture for the neural network, if we
+have a "general" structure, then we should be able to train one model for
+predicting cats, and then, by only replacing our datasets, use that same
+structure to now train a new model for detecting cancers using a dataset of
+radiology images.
+
+After having trained a network (the weights of all layers), another thing we may
+try is just randomizing the last layers parameters, and using the pre-trained
+model for prediction on a new data set, using the already trained weights as the
+initial values for the parameters in the network, the idea is that the network
+may have learned some general ideas about the datasets, e.g. recognizing lines /
+shapes / faces, etc.
+
+You could also augment an already trained network with new layers, if you want
+to create a model that uses the knowledge already in the network (e.g. voice
+recognition), but use it in a novel way (e.g. only trigger when hearing a
+specific phrase).
+
+In both of these cases, we're going from a case where we have a lot of cases, to
+one where there are fewer (e.g. recognize all images / words, to only recognize
+a few, cats / cancers / trigger-words).
+
+This is the direction where transfer learning makes sense, going in the opposite
+direction is hard for transfer-learning.
+
+** multitask learning
+Unlike softmax-regression, where we're asking which label applies to some
+inputs, e.g. is this an image of a cat, or a dog, or a lamp, etc.
+
+In multitask learning we're which labels apply to some input, e.g. which things
+are in this image. In this case, more than one label can apply to the inputs.
+
+This could be achieved by training N networks, for the N labels you want to
+apply, but since a lot of the learning may be general (e.g. recognize lines),
+there can be a lot of shared learning in the network, and a single network could
+out-perform N single networks.
+
+It could also make sense to use multi-task learning when a lot of the data you
+have for the different tasks is similar.
+
+** end-to-end deep learning
+This is one of the great achievements of deep-learning in some areas. And is
+still goal in others.
+
+The idea is that we learn the entire process of mapping from our inputs to the
+outputs we want, instead of having to do a lot of intermediate steps.
+
+For example, if we wanted to create a program that took an audio file as input, and
+created a transcription from it. A decade ago we would have taken the audio
+file, extracted features from it using techniques such as MFCC, then extracted
+the phonemes, maybe using machine learning techniques, then reconstructed those
+phonemes into textual words, and lastly combined the entire thing into a
+transcript.
+
+The progress of deep-learning has allowed us to train big enough networks, with
+enough training data, to do this entire thing in a single model, taking the
+audio as input to the model, and outputting the finished transcript.
+
+It only works because we now have very large amounts of data, and the compute to
+ingest it into our deep models.
+
+It also helps on the problems where we simply don't know the intermediate steps,
+which is part of why deep-learning has seen such a rapid adoption.
+
+Creating hand-designed components can help a model perform better, especially if
+you do not have enough data to create a good end-to-end model, you just need to
+watch out not to limit the model. e.g. forcing a voice recognition model to use
+phonemes, which could be extracted by hand, or by a hand-made program. This
+could lead to worse results because the model may be able to find a better
+representation from the data, one we had not thought of. But augmenting our
+inputs, like providing the phonemes along the audio, could lead to better
+results, because we're taking some of our knowledge and feeding it to the model.
+
